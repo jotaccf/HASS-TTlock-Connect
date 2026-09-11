@@ -4,6 +4,9 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -21,8 +24,7 @@ jobs:
           cd custom_components/ttlock/
           zip ../../ttlock.zip -r ./
 
-      - uses: JasonEtco/upload-to-release@master
+      - name: Upload to release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          args: ./ttlock.zip application/zip
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$GITHUB_REF_NAME" ./ttlock.zip --clobber --repo "$GITHUB_REPOSITORY"
