@@ -14,6 +14,7 @@ from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import callback
 from homeassistant.helpers import config_entry_oauth2_flow
 from homeassistant.helpers.selector import (
+    BooleanSelector,
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
@@ -23,12 +24,16 @@ from homeassistant.helpers.selector import (
 )
 
 from .const import (
+    CONF_GATEWAY_POLL_INTERVAL,
     CONF_POLL_INTERVAL,
     CONF_REGION,
     CONF_SLOW_POLL_INTERVAL,
+    CONF_WEBHOOK_ONLY,
+    DEFAULT_GATEWAY_POLL_INTERVAL_MINUTES,
     DEFAULT_POLL_INTERVAL_MINUTES,
     DEFAULT_REGION,
     DEFAULT_SLOW_POLL_INTERVAL_HOURS,
+    DEFAULT_WEBHOOK_ONLY,
     DOMAIN,
     REGIONS,
 )
@@ -103,12 +108,14 @@ class TTLockAuthFlowHandler(
 class TTLockOptionsFlow(OptionsFlow):
     """Let users tune how often the integration polls the TTLock cloud.
 
-    Two knobs, both global to the account entry: the fast poll interval that
-    re-verifies lock state, and the slow interval that governs how often
-    detail/passage/gateway data is re-fetched (see coordinator.py). Defaults
-    are gentle because webhooks carry real-time changes; users whose webhooks
-    are unreliable can dial the fast interval back down. Changing either
-    reloads the entry so new coordinators pick the values up.
+    Four knobs, all global to the account entry: the fast poll interval that
+    re-verifies lock state, the slow interval that governs how often
+    detail/passage/gateway data is re-fetched, the gateway online/offline
+    poll interval, and webhook-only mode, which skips the per-poll cloud
+    state check once webhooks are confirmed live (see coordinator.py).
+    Defaults are gentle because webhooks carry real-time changes; users whose
+    webhooks are unreliable can dial the fast interval back down. Changing
+    any of them reloads the entry so new coordinators pick the values up.
     """
 
     async def async_step_init(
@@ -159,6 +166,28 @@ class TTLockOptionsFlow(OptionsFlow):
                         ),
                         vol.Coerce(int),
                     ),
+                    vol.Required(
+                        CONF_GATEWAY_POLL_INTERVAL,
+                        default=options.get(
+                            CONF_GATEWAY_POLL_INTERVAL,
+                            DEFAULT_GATEWAY_POLL_INTERVAL_MINUTES,
+                        ),
+                    ): vol.All(
+                        NumberSelector(
+                            NumberSelectorConfig(
+                                min=5,
+                                max=1440,
+                                step=1,
+                                unit_of_measurement="minutes",
+                                mode=NumberSelectorMode.BOX,
+                            )
+                        ),
+                        vol.Coerce(int),
+                    ),
+                    vol.Required(
+                        CONF_WEBHOOK_ONLY,
+                        default=options.get(CONF_WEBHOOK_ONLY, DEFAULT_WEBHOOK_ONLY),
+                    ): BooleanSelector(),
                 }
             ),
         )

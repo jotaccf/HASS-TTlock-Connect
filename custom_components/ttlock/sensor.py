@@ -17,11 +17,16 @@ from homeassistant.const import (
     STATE_UNAVAILABLE,
     EntityCategory,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.device_registry import DeviceEntryType
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
+from .api_stats import ApiCallCounter
 from .ble import async_bluetooth_available
+from .const import DOMAIN, SIGNAL_API_CALL, TT_COUNTER
 from .coordinator import async_add_when_sensor_present, lock_coordinators
 from .entity import BaseLockEntity
 
@@ -39,17 +44,23 @@ async def async_setup_entry(
 
     with_bluetooth = async_bluetooth_available(hass)
 
+    counter: ApiCallCounter = hass.data[DOMAIN][entry.entry_id][TT_COUNTER]
+
     async_add_entities(
         [
-            entity
-            for coordinator in coordinators
-            for entity in (
-                LockBattery(coordinator),
-                LockOperator(coordinator),
-                LockTrigger(coordinator),
-                *([LockGateway(coordinator)] if coordinator.has_gateway else []),
-                *([LockBleSignal(coordinator)] if with_bluetooth else []),
-            )
+            *(
+                entity
+                for coordinator in coordinators
+                for entity in (
+                    LockBattery(coordinator),
+                    LockOperator(coordinator),
+                    LockTrigger(coordinator),
+                    *([LockGateway(coordinator)] if coordinator.has_gateway else []),
+                    *([LockBleSignal(coordinator)] if with_bluetooth else []),
+                )
+            ),
+            ApiCallsToday(entry, counter),
+            ApiCallsThisMonth(entry, counter),
         ]
     )
 
@@ -202,4 +213,88 @@ class LockBleSignal(BaseLockEntity, SensorEntity):
             "source": ble.source,
             "connectable": ble.connectable,
             "last_seen": ble.last_seen.isoformat() if ble.last_seen else None,
+        }
+
+
+class ApiUsageSensor(SensorEntity):
+    """Base for the cloud-API usage sensors backed by ApiCallCounter.
+
+    Not a lock entity - usage is account-wide, so these live on their own
+    service device ("TTLock Cloud API") rather than under any lock. They
+    update on the SIGNAL_API_CALL dispatcher signal fired for every recorded
+    request, so the tally on the dashboard is live. The counter itself is
+    shared install-wide (see __init__.py); with several config entries each
+    entry gets its own sensor pair, all reporting the same shared numbers -
+    TTLock's quota is per developer application, so that's the number that
+    matters either way.
+    """
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_state_class = SensorStateClass.TOTAL
+    _attr_native_unit_of_measurement = "calls"
+    _attr_icon = "mdi:api"
+    _attr_should_poll = False
+
+    def __init__(self, entry: ConfigEntry, counter: ApiCallCounter) -> None:
+        """Initialize with the entry (for unique ids) and the shared counter."""
+        self._counter = counter
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"api-usage-{entry.entry_id}")},
+            name="TTLock Cloud API",
+            manufacturer="TT Lock",
+            entry_type=DeviceEntryType.SERVICE,
+        )
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to the per-call signal."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            async_dispatcher_connect(self.hass, SIGNAL_API_CALL, self._on_api_call)
+        )
+
+    @callback
+    def _on_api_call(self) -> None:
+        self.async_write_ha_state()
+
+
+class ApiCallsToday(ApiUsageSensor):
+    """Cloud API calls made so far today."""
+
+    def __init__(self, entry: ConfigEntry, counter: ApiCallCounter) -> None:
+        """Set up the daily tally sensor."""
+        super().__init__(entry, counter)
+        self._attr_unique_id = f"{entry.entry_id}-api-calls-today"
+        self._attr_name = "TTLock API Calls Today"
+
+    @property
+    def native_value(self) -> int:
+        """Today's tally."""
+        return self._counter.today_count
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Today's calls by endpoint, busiest first."""
+        return {"by_endpoint": self._counter.today_by_endpoint()}
+
+
+class ApiCallsThisMonth(ApiUsageSensor):
+    """Cloud API calls made so far this calendar month, with a projection."""
+
+    def __init__(self, entry: ConfigEntry, counter: ApiCallCounter) -> None:
+        """Set up the monthly tally sensor."""
+        super().__init__(entry, counter)
+        self._attr_unique_id = f"{entry.entry_id}-api-calls-month"
+        self._attr_name = "TTLock API Calls This Month"
+
+    @property
+    def native_value(self) -> int:
+        """This month's tally."""
+        return self._counter.month_count
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Projection at the current rate, plus per-endpoint breakdown."""
+        return {
+            "projected_month_total": self._counter.projected_month_count,
+            "by_endpoint": self._counter.month_by_endpoint(),
         }

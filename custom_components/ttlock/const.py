@@ -7,6 +7,7 @@ TT_API = "api"
 TT_LOCKS = "locks"
 TT_GATEWAYS = "gateways"
 TT_CAPTURE = "capture"
+TT_COUNTER = "api_counter"
 
 CONF_WEBHOOK_URL = "webhook_url"
 CONF_WEBHOOK_STATUS = "webhook_status"
@@ -44,7 +45,24 @@ CONF_SLOW_POLL_INTERVAL = "slow_poll_interval"
 DEFAULT_POLL_INTERVAL_MINUTES = 30
 DEFAULT_SLOW_POLL_INTERVAL_HOURS = 6
 
+# Gateway online/offline polling (gateway/list) - one account-wide call per
+# cycle regardless of lock count, historically hardcoded at 15 minutes, which
+# alone is ~2900 calls/month. Tunable for the same quota reasons as above.
+CONF_GATEWAY_POLL_INTERVAL = "gateway_poll_interval"
+DEFAULT_GATEWAY_POLL_INTERVAL_MINUTES = 15
+
+# Webhook-only mode: when enabled and this entry's webhook has been confirmed
+# live (CONF_WEBHOOK_STATUS), the per-poll cloud re-verification of lock
+# state (lock/queryOpenState) is skipped - webhooks and BLE carry state, and
+# the poll only fetches the initial baseline plus the slow-tier detail.
+CONF_WEBHOOK_ONLY = "webhook_only"
+DEFAULT_WEBHOOK_ONLY = False
+
 SIGNAL_NEW_DATA = f"{DOMAIN}.data_received"
+
+# Fired by api_stats.ApiCallCounter on every recorded API call, so the usage
+# sensors (sensor.py) update live without polling the counter.
+SIGNAL_API_CALL = f"{DOMAIN}.api_call"
 
 DEVICE_LOGGER_PREFIX = f"{__package__}.device."
 

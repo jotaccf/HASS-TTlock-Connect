@@ -7,7 +7,7 @@ refresh, which __init__.py runs in the background after platforms are set up
 confirms presence, not decided up front.
 """
 
-from custom_components.ttlock.const import DOMAIN
+from custom_components.ttlock.const import DOMAIN, TT_COUNTER
 from custom_components.ttlock.models import GatewayLink, LockSummary
 from custom_components.ttlock.sensor import LockBleSignal
 from homeassistant.helpers import entity_registry as er
@@ -45,6 +45,43 @@ async def test_lock_battery_entity_created_immediately(
     await component_setup()
 
     assert hass.states.get("sensor.front_door_battery") is not None
+
+
+async def test_api_usage_sensors_created_and_counting(
+    hass, component_setup, mock_api_responses
+):
+    """The account-wide API usage sensors exist and update per recorded call.
+
+    The test mocks replace TTLockApi's high-level methods, so setup itself
+    records nothing - drive the shared counter directly and check the
+    sensors update live via the dispatcher signal (no polling involved).
+    """
+    mock_api_responses("default")
+    await component_setup()
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    today = hass.states.get("sensor.ttlock_api_calls_today")
+    month = hass.states.get("sensor.ttlock_api_calls_this_month")
+    assert today is not None
+    assert month is not None
+    assert int(today.state) == 0
+
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    counter = hass.data[DOMAIN][entry.entry_id][TT_COUNTER]
+    counter.record("lock/queryOpenState")
+    counter.record("lock/queryOpenState")
+    counter.record("gateway/list")
+    await hass.async_block_till_done()
+
+    today = hass.states.get("sensor.ttlock_api_calls_today")
+    month = hass.states.get("sensor.ttlock_api_calls_this_month")
+    assert int(today.state) == 3
+    assert int(month.state) >= 3
+    assert month.attributes["projected_month_total"] >= int(month.state)
+    assert today.attributes["by_endpoint"] == {
+        "lock/queryOpenState": 2,
+        "gateway/list": 1,
+    }
 
 
 async def test_gateway_signal_entity_disabled_by_default(

@@ -57,6 +57,17 @@ This integration uses the TTLock Cloud to communicate with your lock. It support
    - Test by unlocking your door
    - If the event data was received by home assistant the repair notice will resolve itself, indicating that everything is working.
 
+## Managing API usage
+
+TTLock's developer plans have a monthly API-call budget, and multi-lock accounts can exceed it. The integration gives you visibility and control:
+
+- **Usage sensors** — a "TTLock Cloud API" device provides `TTLock API Calls Today` and `TTLock API Calls This Month` sensors. The monthly sensor includes a `projected_month_total` attribute (this month's total at the current rate) and both carry a per-endpoint breakdown, so you can see exactly what is spending your quota.
+- **Tunable polling** — under Settings > Devices & Services > TTLock > Configure you can adjust:
+  - *Poll interval*: how often each lock's state is re-verified (default 30 min).
+  - *Detail refresh interval*: how often slow-changing detail is re-fetched (default 6 h).
+  - *Gateway status interval*: how often gateway online/offline status is checked (default 15 min). This is one call per check regardless of lock count — raising it to 60 min saves ~2200 calls/month on its own.
+  - *Webhook-only state updates*: once your webhook is confirmed working, skip the per-poll cloud state check entirely and rely on webhooks (and Bluetooth, when in range). Saves one call per lock per poll; only the initial state after a restart comes from the cloud.
+
 # Troubleshooting
 
 ## Common issues

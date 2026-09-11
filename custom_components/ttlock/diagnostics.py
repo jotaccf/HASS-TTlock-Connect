@@ -11,7 +11,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceEntry
 
-from .const import DOMAIN, TO_REDACT, TT_GATEWAYS, TT_LOCKS
+from .const import DOMAIN, TO_REDACT, TT_COUNTER, TT_GATEWAYS, TT_LOCKS
 from .coordinator import LockUpdateCoordinator
 from .models import BaseModel
 
@@ -51,6 +51,8 @@ async def async_get_config_entry_diagnostics(
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
 
+    counter = hass.data[DOMAIN][config_entry.entry_id].get(TT_COUNTER)
+
     return async_redact_data(
         {
             "config_entry": config_entry.as_dict(),
@@ -59,6 +61,16 @@ async def async_get_config_entry_diagnostics(
                 for coordinator in hass.data[DOMAIN][config_entry.entry_id][TT_LOCKS]
             ],
             "gateways": hass.data[DOMAIN][config_entry.entry_id][TT_GATEWAYS].as_dict(),
+            "api_usage": (
+                {
+                    "today": counter.today_count,
+                    "this_month": counter.month_count,
+                    "projected_month_total": counter.projected_month_count,
+                    "month_by_endpoint": counter.month_by_endpoint(),
+                }
+                if counter
+                else None
+            ),
         },
         TO_REDACT,
     )

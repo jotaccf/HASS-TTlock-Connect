@@ -41,6 +41,7 @@ from aiohttp import ClientResponse, ClientSession
 from homeassistant.components.application_credentials import AuthImplementation
 from homeassistant.helpers import config_entry_oauth2_flow
 
+from .api_stats import ApiCallCounter
 from .capture import LockTrafficCapture, log_and_capture
 from .const import DEFAULT_REGION, REGIONS, get_device_logger
 from .models import (
@@ -112,12 +113,14 @@ class TTLockApi:
         oauth_session: config_entry_oauth2_flow.OAuth2Session,
         capture: LockTrafficCapture | None = None,
         region: str = DEFAULT_REGION,
+        counter: ApiCallCounter | None = None,
     ) -> None:
         """Initialize TTLock auth."""
         self._web_session = websession
         self._oauth_session = oauth_session
         self._capture = capture
         self._base = REGIONS[region]["api_base"]
+        self._counter = counter
 
     async def async_get_access_token(self) -> str:
         """Return a valid access token."""
@@ -192,6 +195,8 @@ class TTLockApi:
         lock_id = kwargs.get("lockId")
         logger = self._logger_for(kwargs)
 
+        if self._counter:
+            self._counter.record(path)
         url = urljoin(self._base, path)
         self._debug(
             logger,
@@ -214,6 +219,8 @@ class TTLockApi:
         lock_id = kwargs.get("lockId")
         logger = self._logger_for(kwargs)
 
+        if self._counter:
+            self._counter.record(path)
         url = urljoin(self._base, path)
         self._debug(
             logger,

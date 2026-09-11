@@ -13,6 +13,7 @@ from homeassistant.helpers import aiohttp_client, config_entry_oauth2_flow
 from homeassistant.helpers.device_registry import DeviceEntry
 
 from .api import TTLockApi
+from .api_stats import ApiCallCounter
 from .capture import LockTrafficCapture
 from .const import (
     CONF_REGION,
@@ -20,6 +21,7 @@ from .const import (
     DOMAIN,
     TT_API,
     TT_CAPTURE,
+    TT_COUNTER,
     TT_GATEWAYS,
     TT_LOCKS,
 )
@@ -46,6 +48,10 @@ _CAPTURE_KEY = "_capture"
 # config entry, since it's a single JSON file keyed by lock ID, not
 # per-account state.
 _STORE_KEY = "_lock_state_store"
+
+# Same pattern again: one ApiCallCounter for the whole install - TTLock's
+# API quota applies to the developer application, not per config entry.
+_COUNTER_KEY = "_api_call_counter"
 
 # Per-entry key holding the options snapshot the coordinators were built with,
 # so _reload_on_options_update can ignore non-options entry updates.
@@ -101,16 +107,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         store = LockStateStore(hass)
         domain_data[_STORE_KEY] = store
 
+    counter = domain_data.get(_COUNTER_KEY)
+    if counter is None:
+        counter = ApiCallCounter(hass)
+        await counter.async_load()
+        domain_data[_COUNTER_KEY] = counter
+
     client = TTLockApi(
         aiohttp_client.async_get_clientsession(hass),
         session,
         capture,
         region=entry.data.get(CONF_REGION, DEFAULT_REGION),
+        counter=counter,
     )
 
     domain_data[entry.entry_id] = {
         TT_API: client,
         TT_CAPTURE: capture,
+        TT_COUNTER: counter,
         # Snapshot of the options the coordinators below were built with, so
         # the update listener can tell a real options change from the entry.data
         # writes webhook.py makes during setup (which must not trigger a reload).
@@ -191,6 +205,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if not any(not key.startswith("_") for key in domain_data):
             domain_data.pop(_CAPTURE_KEY, None)
             domain_data.pop(_STORE_KEY, None)
+            domain_data.pop(_COUNTER_KEY, None)
 
     return unload_ok
 

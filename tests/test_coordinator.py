@@ -11,8 +11,11 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.ttlock.api import RequestFailed, TTLockApi
 from custom_components.ttlock.capture import LockTrafficCapture
 from custom_components.ttlock.const import (
+    CONF_GATEWAY_POLL_INTERVAL,
     CONF_POLL_INTERVAL,
     CONF_SLOW_POLL_INTERVAL,
+    CONF_WEBHOOK_ONLY,
+    CONF_WEBHOOK_STATUS,
     DOMAIN,
 )
 from custom_components.ttlock.coordinator import (
@@ -461,8 +464,10 @@ class TestLockUpdateCoordinator:
             monkeypatch.setattr(f"custom_components.ttlock.api.TTLockApi.{name}", spy)
             return spy
 
-        def _make_coordinator(self, hass, api, options=None):
-            config_entry = MockConfigEntry(domain=DOMAIN, options=options or {})
+        def _make_coordinator(self, hass, api, options=None, data=None):
+            config_entry = MockConfigEntry(
+                domain=DOMAIN, options=options or {}, data=data or {}
+            )
             config_entry.add_to_hass(hass)
             summary = LockSummary(
                 lockId=7252408,
@@ -547,6 +552,110 @@ class TestLockUpdateCoordinator:
             await coordinator.async_refresh()
             assert coordinator.data.name == name
             assert coordinator.data.battery_level == battery
+
+    class TestGatewayPollingCadence:
+        """gateway/list cadence is options-tunable (default 15 minutes)."""
+
+        def _make_coordinator(self, hass, api, options=None):
+            config_entry = MockConfigEntry(domain=DOMAIN, options=options or {})
+            config_entry.add_to_hass(hass)
+            return GatewaysUpdateCoordinator(hass, config_entry, api)
+
+        async def test_default_interval(self, hass, api):
+            coordinator = self._make_coordinator(hass, api)
+            assert coordinator.update_interval == timedelta(minutes=15)
+
+        async def test_interval_from_options(self, hass, api):
+            coordinator = self._make_coordinator(
+                hass, api, options={CONF_GATEWAY_POLL_INTERVAL: 60}
+            )
+            assert coordinator.update_interval == timedelta(minutes=60)
+
+    class TestWebhookOnlyMode:
+        """With webhook_only enabled AND the webhook confirmed live, polls
+        skip the cloud lock-state re-verification - webhooks/BLE carry state.
+        The initial baseline is still fetched, and an unconfirmed webhook
+        keeps normal polling (see coordinator._webhook_only_active)."""
+
+        def _make_coordinator(self, hass, api, options=None, data=None):
+            config_entry = MockConfigEntry(
+                domain=DOMAIN, options=options or {}, data=data or {}
+            )
+            config_entry.add_to_hass(hass)
+            summary = LockSummary(
+                lockId=7252408,
+                lockAlias="Test Lock",
+                lockMac="00:00:00:00:00:00",
+                hasGateway=1,
+            )
+            return LockUpdateCoordinator(
+                hass,
+                config_entry,
+                api,
+                summary,
+                LockTrafficCapture(),
+                LockStateStore(hass),
+            )
+
+        @staticmethod
+        def _spy_state(monkeypatch):
+            current = TTLockApi.get_lock_state
+            spy = AsyncMock(side_effect=current)
+            monkeypatch.setattr(
+                "custom_components.ttlock.api.TTLockApi.get_lock_state", spy
+            )
+            return spy
+
+        async def test_skips_cloud_state_after_baseline(
+            self, hass, api, mock_api_responses, monkeypatch
+        ):
+            mock_api_responses("default")
+            get_state = self._spy_state(monkeypatch)
+            coordinator = self._make_coordinator(
+                hass,
+                api,
+                options={CONF_WEBHOOK_ONLY: True},
+                data={CONF_WEBHOOK_STATUS: True},
+            )
+
+            await coordinator.async_refresh()
+            # baseline: state was unknown, so the cloud is still asked once
+            assert get_state.call_count == 1
+            assert coordinator.data.locked is not None
+
+            await coordinator.async_refresh()
+            await coordinator.async_refresh()
+            # webhook-only: no further cloud state calls, state carried forward
+            assert get_state.call_count == 1
+            assert coordinator.data.locked is not None
+
+        async def test_keeps_polling_when_webhook_not_confirmed(
+            self, hass, api, mock_api_responses, monkeypatch
+        ):
+            mock_api_responses("default")
+            get_state = self._spy_state(monkeypatch)
+            coordinator = self._make_coordinator(
+                hass, api, options={CONF_WEBHOOK_ONLY: True}
+            )
+
+            await coordinator.async_refresh()
+            await coordinator.async_refresh()
+
+            assert get_state.call_count == 2
+
+        async def test_keeps_polling_when_option_disabled(
+            self, hass, api, mock_api_responses, monkeypatch
+        ):
+            mock_api_responses("default")
+            get_state = self._spy_state(monkeypatch)
+            coordinator = self._make_coordinator(
+                hass, api, data={CONF_WEBHOOK_STATUS: True}
+            )
+
+            await coordinator.async_refresh()
+            await coordinator.async_refresh()
+
+            assert get_state.call_count == 2
 
     class TestSensorAbsenceTracking:
         """See coordinator.py's _check_for_sensor - the whole reason issue

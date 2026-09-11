@@ -2,11 +2,14 @@
 
 State reaches HA two ways: polling and webhook push, both merging into
 LockUpdateCoordinator. This module owns polling — LockUpdateCoordinator (per
-lock) and GatewaysUpdateCoordinator (gateway online/offline), each on a
-15-minute interval. LockUpdateCoordinator also listens for SIGNAL_NEW_DATA
-(dispatched from webhook.py) via _process_webhook_data, which is why lock
-state updates are close to real-time rather than poll-only — don't remove
-the webhook path in favor of "just poll faster."
+lock) and GatewaysUpdateCoordinator (gateway online/offline), each on an
+options-tunable interval (see const.py for the defaults).
+LockUpdateCoordinator also listens for SIGNAL_NEW_DATA (dispatched from
+webhook.py) via _process_webhook_data, which is why lock state updates are
+close to real-time rather than poll-only — don't remove the webhook path in
+favor of "just poll faster." With the webhook-only option enabled (and the
+webhook confirmed live), the poll's cloud state re-verification is skipped
+entirely and webhooks/BLE carry the state.
 """
 
 from __future__ import annotations
@@ -39,10 +42,15 @@ from .ble import (
 from .ble_protocol import LockStatus, LockVersion, ProtocolError, parse_aes_key
 from .capture import LockTrafficCapture
 from .const import (
+    CONF_GATEWAY_POLL_INTERVAL,
     CONF_POLL_INTERVAL,
     CONF_SLOW_POLL_INTERVAL,
+    CONF_WEBHOOK_ONLY,
+    CONF_WEBHOOK_STATUS,
+    DEFAULT_GATEWAY_POLL_INTERVAL_MINUTES,
     DEFAULT_POLL_INTERVAL_MINUTES,
     DEFAULT_SLOW_POLL_INTERVAL_HOURS,
+    DEFAULT_WEBHOOK_ONLY,
     DOMAIN,
     SIGNAL_NEW_DATA,
     TT_GATEWAYS,
@@ -269,6 +277,7 @@ class LockUpdateCoordinator(DataUpdateCoordinator[LockState]):
             CONF_SLOW_POLL_INTERVAL, DEFAULT_SLOW_POLL_INTERVAL_HOURS
         )
         self._slow_interval = timedelta(hours=slow_hours)
+        self._webhook_only = options.get(CONF_WEBHOOK_ONLY, DEFAULT_WEBHOOK_ONLY)
         self._details_last_fetched: datetime | None = None
         self._passage_last_fetched: datetime | None = None
         self._gateways_last_fetched: datetime | None = None
@@ -395,6 +404,12 @@ class LockUpdateCoordinator(DataUpdateCoordinator[LockState]):
                     new_data.battery_level = status.battery
                 if sensor_present(new_data.sensor) and status.door_open is not None:
                     new_data.sensor.opened = status.door_open
+            elif self._webhook_only_active() and new_data.locked is not None:
+                # Webhook-only: state changes arrive via confirmed-live
+                # webhooks, so skip the cloud re-verification call and carry
+                # the current state forward. The initial baseline (locked is
+                # None, e.g. right after a restart) is still fetched below.
+                pass
             else:
                 try:
                     state = await self.api.get_lock_state(self.lock_id)
@@ -435,6 +450,20 @@ class LockUpdateCoordinator(DataUpdateCoordinator[LockState]):
             raise UpdateFailed(err) from err
         else:
             return new_data
+
+    def _webhook_only_active(self) -> bool:
+        """Whether webhook-only mode may actually skip cloud state checks.
+
+        Requires both the option being enabled and this entry's webhook
+        having been confirmed live (CONF_WEBHOOK_STATUS, set by webhook.py
+        once real traffic arrives) - an enabled option with a webhook that
+        never got registered must keep polling, or the lock would freeze on
+        its last known state forever.
+        """
+        if not self._webhook_only:
+            return False
+        entry = self.config_entry
+        return bool(entry is not None and entry.data.get(CONF_WEBHOOK_STATUS))
 
     def _slow_tier_due(self, last_fetched: datetime | None, now: datetime) -> bool:
         """Whether a slow-tier fetch is due, given when it last ran.
@@ -706,12 +735,17 @@ class GatewaysUpdateCoordinator(DataUpdateCoordinator[dict[int, Gateway]]):
         """Initialize the update co-ordinator for gateways."""
         self.api = api
 
+        options = config_entry.options if config_entry else {}
+        gateway_minutes = options.get(
+            CONF_GATEWAY_POLL_INTERVAL, DEFAULT_GATEWAY_POLL_INTERVAL_MINUTES
+        )
+
         super().__init__(
             hass,
             _LOGGER,
             name=f"{DOMAIN}-gateways",
             config_entry=config_entry,
-            update_interval=timedelta(minutes=15),
+            update_interval=timedelta(minutes=gateway_minutes),
         )
 
     async def _async_update_data(self) -> dict[int, Gateway]:
