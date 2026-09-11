@@ -1,5 +1,5 @@
 {
-  "domain": "ttlock",
+  "domain": "ttlock_connect",
   "name": "HASS TTLock Connect",
   "after_dependencies": ["bluetooth", "cloud"],
   "codeowners": ["@jotaccf"],

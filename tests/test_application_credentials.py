@@ -2,10 +2,10 @@
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.ttlock.application_credentials import (
+from custom_components.ttlock_connect.application_credentials import (
     async_get_auth_implementation,
 )
-from custom_components.ttlock.const import CONF_REGION, DOMAIN
+from custom_components.ttlock_connect.const import CONF_REGION, DOMAIN
 from homeassistant.components.application_credentials import ClientCredential
 from homeassistant.core import HomeAssistant
 

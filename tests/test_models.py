@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from pydantic import BaseModel
 import pytest
 
-from custom_components.ttlock.models import (
+from custom_components.ttlock_connect.models import (
     Card,
     CardType,
     EpochMs,

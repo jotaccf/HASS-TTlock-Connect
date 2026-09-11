@@ -5,7 +5,7 @@ from datetime import datetime
 from freezegun import freeze_time
 import pytest
 
-from custom_components.ttlock.api_stats import ApiCallCounter
+from custom_components.ttlock_connect.api_stats import ApiCallCounter
 
 
 @pytest.fixture

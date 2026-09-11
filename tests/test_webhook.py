@@ -10,14 +10,14 @@ from multidict import MultiDict
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.ttlock.capture import LockTrafficCapture
-from custom_components.ttlock.const import (
+from custom_components.ttlock_connect.capture import LockTrafficCapture
+from custom_components.ttlock_connect.const import (
     CONF_WEBHOOK_STATUS,
     CONF_WEBHOOK_URL,
     DOMAIN,
     SIGNAL_NEW_DATA,
 )
-from custom_components.ttlock.webhook import WebhookHandler
+from custom_components.ttlock_connect.webhook import WebhookHandler
 from homeassistant.const import CONF_WEBHOOK_ID, EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import CoreState, HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
@@ -170,9 +170,11 @@ class TestPerLockLogging:
         # See the equivalent test in tests/test_api.py for why the WARNING
         # call must come first: caplog.set_level shares one handler whose
         # level is overwritten by each call.
-        caplog.set_level(logging.WARNING, logger="custom_components.ttlock.device.2")
         caplog.set_level(
-            logging.DEBUG, logger="custom_components.ttlock.device.7252408"
+            logging.WARNING, logger="custom_components.ttlock_connect.device.2"
+        )
+        caplog.set_level(
+            logging.DEBUG, logger="custom_components.ttlock_connect.device.7252408"
         )
 
         request = _request(
@@ -184,25 +186,27 @@ class TestPerLockLogging:
         await hass.async_block_till_done()
 
         assert any(
-            record.name == "custom_components.ttlock.device.7252408"
+            record.name == "custom_components.ttlock_connect.device.7252408"
             for record in caplog.records
         )
         assert not any(
-            record.name == "custom_components.ttlock.device.2"
+            record.name == "custom_components.ttlock_connect.device.2"
             for record in caplog.records
         )
 
     async def test_webhook_data_without_lock_id_logs_via_shared_logger(
         self, hass: HomeAssistant, handler: WebhookHandler, caplog
     ):
-        caplog.set_level(logging.DEBUG, logger="custom_components.ttlock.webhook")
+        caplog.set_level(
+            logging.DEBUG, logger="custom_components.ttlock_connect.webhook"
+        )
 
         request = _request(MultiDict({"records": json.dumps([WEBHOOK_LOCK_10AM_UTC])}))
         await handler.handle_webhook(hass, "wh-id", request)
         await hass.async_block_till_done()
 
         assert any(
-            record.name == "custom_components.ttlock.webhook"
+            record.name == "custom_components.ttlock_connect.webhook"
             for record in caplog.records
         )
 

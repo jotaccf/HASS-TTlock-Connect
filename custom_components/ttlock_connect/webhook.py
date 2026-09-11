@@ -393,7 +393,7 @@ class WebhookHandler:
             translation_key="webhook_setup",
             translation_placeholders={
                 "webhook_url": uri,
-                "docs_url": "https://github.com/jbergler/hass-ttlock?tab=readme-ov-file#creating-an-oauth-app",
+                "docs_url": "https://github.com/jotaccf/HASS-TTlock-Connect?tab=readme-ov-file#creating-an-oauth-app",
             },
             learn_more_url="https://open.ttlock.com/manager",
         )

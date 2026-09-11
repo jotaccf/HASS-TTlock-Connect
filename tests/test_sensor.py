@@ -7,9 +7,9 @@ refresh, which __init__.py runs in the background after platforms are set up
 confirms presence, not decided up front.
 """
 
-from custom_components.ttlock.const import DOMAIN, TT_COUNTER
-from custom_components.ttlock.models import GatewayLink, LockSummary
-from custom_components.ttlock.sensor import LockBleSignal
+from custom_components.ttlock_connect.const import DOMAIN, TT_COUNTER
+from custom_components.ttlock_connect.models import GatewayLink, LockSummary
+from custom_components.ttlock_connect.sensor import LockBleSignal
 from homeassistant.helpers import entity_registry as er
 
 from .const import MOCK_LOCK_MAC
@@ -123,7 +123,7 @@ async def test_gateway_signal_entity_reports_best_gateway_and_others(
         ]
 
     monkeypatch.setattr(
-        "custom_components.ttlock.api.TTLockApi.get_gateways_for_lock",
+        "custom_components.ttlock_connect.api.TTLockApi.get_gateways_for_lock",
         mock_get_gateways_for_lock,
     )
 
@@ -165,7 +165,7 @@ async def test_gateway_signal_entity_not_created_for_wifi_only_lock(
         ]
 
     monkeypatch.setattr(
-        "custom_components.ttlock.api.TTLockApi.get_locks", mock_get_locks
+        "custom_components.ttlock_connect.api.TTLockApi.get_locks", mock_get_locks
     )
 
     coordinator = await component_setup()

@@ -36,7 +36,7 @@ This integration uses the TTLock Cloud to communicate with your locks. It suppor
 1. Go to https://open.ttlock.com/manager and create an account
 1. Register an application (approval can take a few days)
 1. Install the integration via HACS: add `jotaccf/HASS-TTlock-Connect` as a custom repository (category: Integration), install it and restart Home Assistant
-1. Set up the integration [via the Home Assistant UI](https://my.home-assistant.io/redirect/config_flow_start/?domain=ttlock)
+1. Set up the integration [via the Home Assistant UI](https://my.home-assistant.io/redirect/config_flow_start/?domain=ttlock_connect)
    - The first credentials you will be prompted for are the Application Client ID & Secret created above.
    - The second credentials are the username/password you use to log into the TTLock app on your phone.
 1. Once the integration is working you should see a repair notice under Settings > Repairs with the webhook URL
@@ -50,11 +50,18 @@ This integration uses the TTLock Cloud to communicate with your locks. It suppor
 TTLock's developer plans have a monthly API-call budget, and multi-lock accounts can exceed it. The integration gives you visibility and control:
 
 - **Usage sensors** — a "TTLock Cloud API" device provides `TTLock API Calls Today` and `TTLock API Calls This Month` sensors. The monthly sensor includes a `projected_month_total` attribute (this month's total at the current rate) and both carry a per-endpoint breakdown, so you can see exactly what is spending your quota.
-- **Tunable polling** — under Settings > Devices & Services > TTLock > Configure you can adjust:
+- **Tunable polling** — under Settings > Devices & Services > HASS TTLock Connect > Configure you can adjust:
   - *Poll interval*: how often each lock's state is re-verified (default 30 min).
   - *Detail refresh interval*: how often slow-changing detail is re-fetched (default 6 h).
   - *Gateway status interval*: how often gateway online/offline status is checked (default 15 min). This is one call per check regardless of lock count — raising it to 60 min saves ~2200 calls/month on its own.
   - *Webhook-only state updates*: once your webhook is confirmed working, skip the per-poll cloud state check entirely and rely on webhooks (and Bluetooth, when in range). Saves one call per lock per poll; only the initial state after a restart comes from the cloud.
+
+## Running alongside the original TTLock integration
+
+This integration uses its own domain (`ttlock_connect`), storage and webhook, so it can be installed in parallel with the original `ttlock` integration without file or entity conflicts. Two caveats when both talk to the same TTLock account:
+
+- **Webhook**: the TTLock console accepts a single callback URL per developer application, so only one of the two integrations can receive real-time events. Either point the callback URL at the integration you use most, or register a second developer application on open.ttlock.com and give each integration its own Client ID/Secret.
+- **Quota**: both integrations poll independently, so your API usage roughly doubles while both are active. The usage sensors here only count this integration's calls.
 
 # Troubleshooting
 

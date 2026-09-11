@@ -19,7 +19,7 @@ import base64
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 import pytest
 
-from custom_components.ttlock.ble_protocol import (
+from custom_components.ttlock_connect.ble_protocol import (
     HEADER_LENGTH,
     MAGIC,
     MAX_DATA_LENGTH,

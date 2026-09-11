@@ -3,9 +3,9 @@
 from datetime import timedelta
 from unittest.mock import patch
 
-from custom_components.ttlock import async_remove_config_entry_device
-from custom_components.ttlock.capture import LockTrafficCapture
-from custom_components.ttlock.const import (
+from custom_components.ttlock_connect import async_remove_config_entry_device
+from custom_components.ttlock_connect.capture import LockTrafficCapture
+from custom_components.ttlock_connect.const import (
     CONF_POLL_INTERVAL,
     CONF_SLOW_POLL_INTERVAL,
     CONF_WEBHOOK_STATUS,
@@ -13,8 +13,8 @@ from custom_components.ttlock.const import (
     TT_CAPTURE,
     TT_LOCKS,
 )
-from custom_components.ttlock.models import Gateway, LockSummary
-from custom_components.ttlock.webhook import WebhookHandler
+from custom_components.ttlock_connect.models import Gateway, LockSummary
+from custom_components.ttlock_connect.webhook import WebhookHandler
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_WEBHOOK_ID, EVENT_HOMEASSISTANT_STOP
 from homeassistant.helpers import device_registry as dr
@@ -125,7 +125,7 @@ async def test_group_refcount_unwinds_after_no_url_failure(
         await component_setup()
 
     with patch(
-        "custom_components.ttlock.webhook.webhook_unregister"
+        "custom_components.ttlock_connect.webhook.webhook_unregister"
     ) as mock_unregister:
         hass.bus.async_fire(EVENT_HOMEASSISTANT_STOP)
         await hass.async_block_till_done()
@@ -156,7 +156,7 @@ async def test_setup_with_non_connectable_lock(
         ]
 
     monkeypatch.setattr(
-        "custom_components.ttlock.api.TTLockApi.get_locks", mock_get_locks
+        "custom_components.ttlock_connect.api.TTLockApi.get_locks", mock_get_locks
     )
 
     await component_setup()
@@ -192,7 +192,9 @@ async def test_webhook_registered_and_unregistered_once_across_shared_entries(
     entry_a = new_mocked_entry()
     entry_a.add_to_hass(hass)
 
-    with patch("custom_components.ttlock.webhook.webhook_register") as mock_register:
+    with patch(
+        "custom_components.ttlock_connect.webhook.webhook_register"
+    ) as mock_register:
         assert await hass.config_entries.async_setup(entry_a.entry_id)
 
         # entry_b must not be added until entry_a's setup has finished, same
@@ -207,7 +209,7 @@ async def test_webhook_registered_and_unregistered_once_across_shared_entries(
     assert entry_a.data[CONF_WEBHOOK_ID] == entry_b.data[CONF_WEBHOOK_ID]
 
     with patch(
-        "custom_components.ttlock.webhook.webhook_unregister"
+        "custom_components.ttlock_connect.webhook.webhook_unregister"
     ) as mock_unregister:
         hass.bus.async_fire(EVENT_HOMEASSISTANT_STOP)
         await hass.async_block_till_done()
@@ -382,7 +384,7 @@ async def test_remove_config_entry_device_blocks_active_gateway(
         ]
 
     monkeypatch.setattr(
-        "custom_components.ttlock.api.TTLockApi.get_gateways", mock_get_gateways
+        "custom_components.ttlock_connect.api.TTLockApi.get_gateways", mock_get_gateways
     )
 
     await component_setup()

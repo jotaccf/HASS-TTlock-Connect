@@ -1,6 +1,6 @@
-# hass-ttlock
+# HASS TTLock Connect
 
-A Home Assistant custom integration (HACS) for TTLock smart locks. Domain: `ttlock`. Code lives entirely under `custom_components/ttlock/` as flat files — no subpackages. Keep it that way unless a restructure is explicitly requested; don't introduce a `helpers/`, `utils/`, or similar catch-all package.
+A Home Assistant custom integration (HACS) for TTLock smart locks. Domain: `ttlock_connect`. Code lives entirely under `custom_components/ttlock_connect/` as flat files — no subpackages. Keep it that way unless a restructure is explicitly requested; don't introduce a `helpers/`, `utils/`, or similar catch-all package.
 
 ## Feedback loop — run this before you're done
 
@@ -55,7 +55,7 @@ State reaches HA two ways — polling (`coordinator.py`, 15-minute interval) and
 
 ### Issue tracker
 
-Issues are tracked as GitHub issues on `jbergler/hass-ttlock`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+Issues are tracked as GitHub issues on `jotaccf/HASS-TTlock-Connect`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

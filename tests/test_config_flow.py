@@ -5,8 +5,8 @@ from unittest.mock import patch
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.ttlock.api import TTLockAuthImplementation
-from custom_components.ttlock.const import (
+from custom_components.ttlock_connect.api import TTLockAuthImplementation
+from custom_components.ttlock_connect.const import (
     CONF_GATEWAY_POLL_INTERVAL,
     CONF_POLL_INTERVAL,
     CONF_REGION,
@@ -65,7 +65,7 @@ async def test_flow_persists_region_and_targets_its_token_url(
 
     with (
         patch.object(TTLockAuthImplementation, "_token_request", fake_token_request),
-        patch("custom_components.ttlock.async_setup_entry", return_value=True),
+        patch("custom_components.ttlock_connect.async_setup_entry", return_value=True),
     ):
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],

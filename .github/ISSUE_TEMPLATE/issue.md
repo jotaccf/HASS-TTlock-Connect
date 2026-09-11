@@ -3,7 +3,7 @@ name: Issue
 about: Report a bug
 title: ""
 labels: ""
-assignees: jbergler
+assignees: jotaccf
 ---
 
 <!---

@@ -2,5 +2,5 @@
   "name": "HASS TTLock Connect",
   "render_readme": true,
   "zip_release": true,
-  "filename": "ttlock.zip"
+  "filename": "ttlock_connect.zip"
 }

@@ -1,7 +1,7 @@
 """Test the TTLock Gateway Binary Sensor."""
 
-from custom_components.ttlock.const import DOMAIN, TT_GATEWAYS
-from custom_components.ttlock.models import Gateway
+from custom_components.ttlock_connect.const import DOMAIN, TT_GATEWAYS
+from custom_components.ttlock_connect.models import Gateway
 from homeassistant.const import STATE_OFF, STATE_ON
 from homeassistant.core import HomeAssistant
 
@@ -25,7 +25,7 @@ def _mock_gateways(monkeypatch, *gateways: dict) -> None:
         return [Gateway.model_validate(gateway) for gateway in gateways]
 
     monkeypatch.setattr(
-        "custom_components.ttlock.api.TTLockApi.get_gateways", mock_get_gateways
+        "custom_components.ttlock_connect.api.TTLockApi.get_gateways", mock_get_gateways
     )
 
 

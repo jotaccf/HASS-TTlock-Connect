@@ -6,7 +6,7 @@ from unittest.mock import call, patch
 import pytest
 import voluptuous as vol
 
-from custom_components.ttlock.const import (
+from custom_components.ttlock_connect.const import (
     DOMAIN,
     SVC_CLEANUP_PASSCODES,
     SVC_CONFIG_AUTOLOCK,
@@ -23,7 +23,7 @@ from custom_components.ttlock.const import (
     SVC_RENAME_FINGERPRINT,
     SVC_UPDATE_STATE,
 )
-from custom_components.ttlock.models import (
+from custom_components.ttlock_connect.models import (
     AddPasscodeConfig,
     Card,
     Fingerprint,
@@ -77,7 +77,8 @@ class Test_configure_autolock:
         entity_id = coordinator.entities[0].entity_id
 
         with patch(
-            "custom_components.ttlock.api.TTLockApi.set_auto_lock", return_value=True
+            "custom_components.ttlock_connect.api.TTLockApi.set_auto_lock",
+            return_value=True,
         ) as mock:
             await hass.services.async_call(
                 DOMAIN,
@@ -112,7 +113,7 @@ class Test_list_passcodes:
         )
 
         with patch(
-            "custom_components.ttlock.api.TTLockApi.list_passcodes",
+            "custom_components.ttlock_connect.api.TTLockApi.list_passcodes",
             return_value=[passcode],
         ) as mock:
             response = await hass.services.async_call(
@@ -152,7 +153,7 @@ class Test_list_passcodes:
         entity_id = coordinator.entities[0].entity_id
 
         with patch(
-            "custom_components.ttlock.api.TTLockApi.list_passcodes",
+            "custom_components.ttlock_connect.api.TTLockApi.list_passcodes",
             return_value=[],
         ) as mock:
             response = await hass.services.async_call(
@@ -189,7 +190,7 @@ class Test_list_records:
         )
 
         with patch(
-            "custom_components.ttlock.api.TTLockApi.get_lock_records",
+            "custom_components.ttlock_connect.api.TTLockApi.get_lock_records",
             return_value=[record],
         ) as mock:
             response = await hass.services.async_call(
@@ -234,7 +235,7 @@ class Test_list_records:
         entity_id = coordinator.entities[0].entity_id
 
         with patch(
-            "custom_components.ttlock.api.TTLockApi.get_lock_records",
+            "custom_components.ttlock_connect.api.TTLockApi.get_lock_records",
             return_value=[],
         ) as mock:
             response = await hass.services.async_call(
@@ -261,7 +262,7 @@ class Test_list_records:
         end_time = dt_util.now()
 
         with patch(
-            "custom_components.ttlock.api.TTLockApi.get_lock_records",
+            "custom_components.ttlock_connect.api.TTLockApi.get_lock_records",
             return_value=[],
         ) as mock:
             await hass.services.async_call(
@@ -296,7 +297,7 @@ class Test_list_records:
         end_time = dt_util.now()
 
         with patch(
-            "custom_components.ttlock.api.TTLockApi.get_lock_records",
+            "custom_components.ttlock_connect.api.TTLockApi.get_lock_records",
             return_value=[],
         ) as mock:
             await hass.services.async_call(
@@ -337,7 +338,8 @@ class Test_create_passcode:
             "end_time": dt_util.now() + timedelta(weeks=2),
         }
         with patch(
-            "custom_components.ttlock.api.TTLockApi.add_passcode", return_value=True
+            "custom_components.ttlock_connect.api.TTLockApi.add_passcode",
+            return_value=True,
         ) as mock:
             await hass.services.async_call(
                 DOMAIN,
@@ -375,7 +377,8 @@ class Test_create_passcode:
             "end_time": dt_util.now() + timedelta(weeks=2),
         }
         with patch(
-            "custom_components.ttlock.api.TTLockApi.add_passcode", return_value=False
+            "custom_components.ttlock_connect.api.TTLockApi.add_passcode",
+            return_value=False,
         ) as mock:
             await hass.services.async_call(
                 DOMAIN,
@@ -401,7 +404,8 @@ class Test_create_passcode:
             "passcode": "1234",
         }
         with patch(
-            "custom_components.ttlock.api.TTLockApi.add_passcode", return_value=True
+            "custom_components.ttlock_connect.api.TTLockApi.add_passcode",
+            return_value=True,
         ) as mock:
             await hass.services.async_call(
                 DOMAIN,
@@ -477,7 +481,8 @@ class Test_modify_passcode:
             "end_time": dt_util.now() + timedelta(weeks=2),
         }
         with patch(
-            "custom_components.ttlock.api.TTLockApi.modify_passcode", return_value=True
+            "custom_components.ttlock_connect.api.TTLockApi.modify_passcode",
+            return_value=True,
         ) as mock:
             await hass.services.async_call(
                 DOMAIN,
@@ -517,7 +522,8 @@ class Test_modify_passcode:
             "end_time": dt_util.now() + timedelta(weeks=2),
         }
         with patch(
-            "custom_components.ttlock.api.TTLockApi.modify_passcode", return_value=False
+            "custom_components.ttlock_connect.api.TTLockApi.modify_passcode",
+            return_value=False,
         ) as mock:
             await hass.services.async_call(
                 DOMAIN,
@@ -545,7 +551,8 @@ class Test_modify_passcode:
             "end_time": dt_util.now() + timedelta(weeks=2),
         }
         with patch(
-            "custom_components.ttlock.api.TTLockApi.modify_passcode", return_value=True
+            "custom_components.ttlock_connect.api.TTLockApi.modify_passcode",
+            return_value=True,
         ) as mock:
             await hass.services.async_call(
                 DOMAIN,
@@ -572,7 +579,8 @@ class Test_modify_passcode:
             "passcode": "5678",
         }
         with patch(
-            "custom_components.ttlock.api.TTLockApi.modify_passcode", return_value=True
+            "custom_components.ttlock_connect.api.TTLockApi.modify_passcode",
+            return_value=True,
         ) as mock:
             await hass.services.async_call(
                 DOMAIN,
@@ -648,7 +656,8 @@ class Test_delete_passcode:
             "passcode_id": 123,
         }
         with patch(
-            "custom_components.ttlock.api.TTLockApi.delete_passcode", return_value=True
+            "custom_components.ttlock_connect.api.TTLockApi.delete_passcode",
+            return_value=True,
         ) as mock:
             await hass.services.async_call(
                 DOMAIN,
@@ -678,7 +687,8 @@ class Test_delete_passcode:
             "passcode_id": 123,
         }
         with patch(
-            "custom_components.ttlock.api.TTLockApi.delete_passcode", return_value=False
+            "custom_components.ttlock_connect.api.TTLockApi.delete_passcode",
+            return_value=False,
         ) as mock:
             await hass.services.async_call(
                 DOMAIN,
@@ -702,7 +712,8 @@ class Test_delete_passcode:
             "passcode_id": 123,
         }
         with patch(
-            "custom_components.ttlock.api.TTLockApi.delete_passcode", return_value=True
+            "custom_components.ttlock_connect.api.TTLockApi.delete_passcode",
+            return_value=True,
         ) as mock:
             await hass.services.async_call(
                 DOMAIN,
@@ -727,7 +738,8 @@ class Test_cleanup_passcodes:
         entity_id = coordinator.entities[0].entity_id
 
         with patch(
-            "custom_components.ttlock.api.TTLockApi.list_passcodes", return_value=[]
+            "custom_components.ttlock_connect.api.TTLockApi.list_passcodes",
+            return_value=[],
         ) as mock:
             response = await hass.services.async_call(
                 DOMAIN,
@@ -763,7 +775,7 @@ class Test_cleanup_passcodes:
 
         with (
             patch(
-                "custom_components.ttlock.api.TTLockApi.list_passcodes",
+                "custom_components.ttlock_connect.api.TTLockApi.list_passcodes",
                 return_value=[
                     Passcode(
                         keyboardPwdId=123,
@@ -774,7 +786,7 @@ class Test_cleanup_passcodes:
                 ],
             ),
             patch(
-                "custom_components.ttlock.api.TTLockApi.delete_passcode",
+                "custom_components.ttlock_connect.api.TTLockApi.delete_passcode",
                 return_value=True,
             ) as mock,
         ):
@@ -834,7 +846,7 @@ class Test_list_cards:
         )
 
         with patch(
-            "custom_components.ttlock.api.TTLockApi.list_cards",
+            "custom_components.ttlock_connect.api.TTLockApi.list_cards",
             return_value=[card],
         ) as mock:
             response = await hass.services.async_call(
@@ -875,7 +887,7 @@ class Test_list_cards:
         entity_id = coordinator.entities[0].entity_id
 
         with patch(
-            "custom_components.ttlock.api.TTLockApi.list_cards",
+            "custom_components.ttlock_connect.api.TTLockApi.list_cards",
             return_value=[],
         ) as mock:
             response = await hass.services.async_call(
@@ -901,7 +913,8 @@ class Test_rename_card:
         entity_id = coordinator.entities[0].entity_id
 
         with patch(
-            "custom_components.ttlock.api.TTLockApi.rename_card", return_value=True
+            "custom_components.ttlock_connect.api.TTLockApi.rename_card",
+            return_value=True,
         ) as mock:
             await hass.services.async_call(
                 DOMAIN,
@@ -924,7 +937,8 @@ class Test_delete_card:
         entity_id = coordinator.entities[0].entity_id
 
         with patch(
-            "custom_components.ttlock.api.TTLockApi.delete_card", return_value=True
+            "custom_components.ttlock_connect.api.TTLockApi.delete_card",
+            return_value=True,
         ) as mock:
             await hass.services.async_call(
                 DOMAIN,
@@ -942,7 +956,8 @@ class Test_delete_card:
         await component_setup()
 
         with patch(
-            "custom_components.ttlock.api.TTLockApi.delete_card", return_value=True
+            "custom_components.ttlock_connect.api.TTLockApi.delete_card",
+            return_value=True,
         ) as mock:
             await hass.services.async_call(
                 DOMAIN,
@@ -973,7 +988,7 @@ class Test_list_fingerprints:
         )
 
         with patch(
-            "custom_components.ttlock.api.TTLockApi.list_fingerprints",
+            "custom_components.ttlock_connect.api.TTLockApi.list_fingerprints",
             return_value=[fingerprint],
         ) as mock:
             response = await hass.services.async_call(
@@ -1015,7 +1030,7 @@ class Test_rename_fingerprint:
         entity_id = coordinator.entities[0].entity_id
 
         with patch(
-            "custom_components.ttlock.api.TTLockApi.rename_fingerprint",
+            "custom_components.ttlock_connect.api.TTLockApi.rename_fingerprint",
             return_value=True,
         ) as mock:
             await hass.services.async_call(
@@ -1043,7 +1058,7 @@ class Test_delete_fingerprint:
         entity_id = coordinator.entities[0].entity_id
 
         with patch(
-            "custom_components.ttlock.api.TTLockApi.delete_fingerprint",
+            "custom_components.ttlock_connect.api.TTLockApi.delete_fingerprint",
             return_value=True,
         ) as mock:
             await hass.services.async_call(

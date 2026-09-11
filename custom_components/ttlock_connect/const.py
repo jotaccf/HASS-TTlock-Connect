@@ -2,7 +2,7 @@
 
 import logging
 
-DOMAIN = "ttlock"
+DOMAIN = "ttlock_connect"
 TT_API = "api"
 TT_LOCKS = "locks"
 TT_GATEWAYS = "gateways"

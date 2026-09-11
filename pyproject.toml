@@ -1,5 +1,5 @@
 [project]
-name = "hass-ttlock"
+name = "hass-ttlock-connect"
 version = "0.1.0"
 requires-python = ">=3.13.2"
 dependencies = [
@@ -10,7 +10,7 @@ dependencies = [
 python-version = "3.13"
 
 [tool.coverage.run]
-source = ["custom_components.ttlock"]
+source = ["custom_components.ttlock_connect"]
 omit = ["tests/*"]
 
 [tool.pytest.ini_options]
@@ -214,7 +214,7 @@ max-complexity = 25
 "tests/test_webhook.py" = [
     "SLF001",  # exercises WebhookHandler._resolve_group_webhook_id directly
 ]
-"custom_components/ttlock/models.py" = [
+"custom_components/ttlock_connect/models.py" = [
     "N815",  # fields mirror the TTLock API's camelCase wire format on purpose
 ]
 

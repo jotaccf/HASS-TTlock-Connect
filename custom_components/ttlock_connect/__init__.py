@@ -170,7 +170,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_create_background_task(
         hass,
         _fill_lock_details(connectable_locks),
-        name=f"ttlock-{entry.entry_id}-initial-detail-fill",
+        name=f"ttlock_connect-{entry.entry_id}-initial-detail-fill",
     )
 
     return True

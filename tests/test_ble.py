@@ -19,9 +19,9 @@ from bleak_retry_connector import BleakError
 from habluetooth import BluetoothScanningMode
 import pytest
 
-from custom_components.ttlock import ble
-from custom_components.ttlock.api import RequestFailed
-from custom_components.ttlock.ble import (
+from custom_components.ttlock_connect import ble
+from custom_components.ttlock_connect.api import RequestFailed
+from custom_components.ttlock_connect.ble import (
     BleConnectionError,
     BleData,
     BleError,
@@ -32,7 +32,7 @@ from custom_components.ttlock.ble import (
     async_read_status,
     async_track_address,
 )
-from custom_components.ttlock.ble_protocol import (
+from custom_components.ttlock_connect.ble_protocol import (
     NOTIFY_UUID,
     WRITE_UUID,
     ChecksumError,
@@ -41,7 +41,7 @@ from custom_components.ttlock.ble_protocol import (
     LockVersion,
     parse_aes_key,
 )
-from custom_components.ttlock.models import Lock
+from custom_components.ttlock_connect.models import Lock
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
@@ -634,7 +634,8 @@ class TestCoordinatorBleRead:
             raise RequestFailed("no gateway")
 
         monkeypatch.setattr(
-            "custom_components.ttlock.api.TTLockApi.get_lock_state", get_lock_state
+            "custom_components.ttlock_connect.api.TTLockApi.get_lock_state",
+            get_lock_state,
         )
 
     @pytest.fixture
@@ -686,7 +687,9 @@ class TestCoordinatorBleRead:
         async def get_lock(self, lock_id):
             return Lock.model_validate({**BASIC_LOCK_DETAILS, "aesKeyStr": "<REMOVED>"})
 
-        monkeypatch.setattr("custom_components.ttlock.api.TTLockApi.get_lock", get_lock)
+        monkeypatch.setattr(
+            "custom_components.ttlock_connect.api.TTLockApi.get_lock", get_lock
+        )
 
         await coordinator.async_refresh()
 

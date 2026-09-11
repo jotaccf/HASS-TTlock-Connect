@@ -8,9 +8,9 @@ import dateparser
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.ttlock.api import RequestFailed, TTLockApi
-from custom_components.ttlock.capture import LockTrafficCapture
-from custom_components.ttlock.const import (
+from custom_components.ttlock_connect.api import RequestFailed, TTLockApi
+from custom_components.ttlock_connect.capture import LockTrafficCapture
+from custom_components.ttlock_connect.const import (
     CONF_GATEWAY_POLL_INTERVAL,
     CONF_POLL_INTERVAL,
     CONF_SLOW_POLL_INTERVAL,
@@ -18,21 +18,21 @@ from custom_components.ttlock.const import (
     CONF_WEBHOOK_STATUS,
     DOMAIN,
 )
-from custom_components.ttlock.coordinator import (
+from custom_components.ttlock_connect.coordinator import (
     GatewaysUpdateCoordinator,
     LockState,
     LockUpdateCoordinator,
     SensorData,
     async_add_when_sensor_present,
 )
-from custom_components.ttlock.models import (
+from custom_components.ttlock_connect.models import (
     GatewayLink,
     LockState as WireLockState,
     LockSummary,
     PassageModeConfig,
     WebhookEvent,
 )
-from custom_components.ttlock.store import LockStateStore
+from custom_components.ttlock_connect.store import LockStateStore
 from homeassistant.helpers.update_coordinator import UpdateFailed
 from homeassistant.util import dt as dt_util
 
@@ -278,7 +278,7 @@ class TestLockUpdateCoordinator:
                 return WireLockState.model_validate(LOCK_STATE_LOCKED)
 
             monkeypatch.setattr(
-                "custom_components.ttlock.api.TTLockApi.get_lock_state",
+                "custom_components.ttlock_connect.api.TTLockApi.get_lock_state",
                 mock_get_lock_state_locked,
             )
 
@@ -297,7 +297,7 @@ class TestLockUpdateCoordinator:
                 raise RequestFailed("boom")
 
             monkeypatch.setattr(
-                "custom_components.ttlock.api.TTLockApi.get_lock_state",
+                "custom_components.ttlock_connect.api.TTLockApi.get_lock_state",
                 mock_get_lock_state_fails,
             )
 
@@ -321,7 +321,7 @@ class TestLockUpdateCoordinator:
                 raise RequestFailed("boom")
 
             monkeypatch.setattr(
-                "custom_components.ttlock.api.TTLockApi.get_lock_state",
+                "custom_components.ttlock_connect.api.TTLockApi.get_lock_state",
                 mock_get_lock_state_fails,
             )
 
@@ -384,7 +384,7 @@ class TestLockUpdateCoordinator:
                 ]
 
             monkeypatch.setattr(
-                "custom_components.ttlock.api.TTLockApi.get_gateways_for_lock",
+                "custom_components.ttlock_connect.api.TTLockApi.get_gateways_for_lock",
                 mock_get_gateways_for_lock,
             )
 
@@ -422,7 +422,7 @@ class TestLockUpdateCoordinator:
                 return []
 
             monkeypatch.setattr(
-                "custom_components.ttlock.api.TTLockApi.get_gateways_for_lock",
+                "custom_components.ttlock_connect.api.TTLockApi.get_gateways_for_lock",
                 mock_get_gateways_for_lock,
             )
 
@@ -461,7 +461,9 @@ class TestLockUpdateCoordinator:
             """Wrap the currently-installed mock for `name` in a call counter."""
             current = getattr(TTLockApi, name)
             spy = AsyncMock(side_effect=current)
-            monkeypatch.setattr(f"custom_components.ttlock.api.TTLockApi.{name}", spy)
+            monkeypatch.setattr(
+                f"custom_components.ttlock_connect.api.TTLockApi.{name}", spy
+            )
             return spy
 
         def _make_coordinator(self, hass, api, options=None, data=None):
@@ -602,7 +604,7 @@ class TestLockUpdateCoordinator:
             current = TTLockApi.get_lock_state
             spy = AsyncMock(side_effect=current)
             monkeypatch.setattr(
-                "custom_components.ttlock.api.TTLockApi.get_lock_state", spy
+                "custom_components.ttlock_connect.api.TTLockApi.get_lock_state", spy
             )
             return spy
 
@@ -757,7 +759,7 @@ class TestLockUpdateCoordinator:
                 call_count += 1
 
             monkeypatch.setattr(
-                "custom_components.ttlock.api.TTLockApi.get_sensor",
+                "custom_components.ttlock_connect.api.TTLockApi.get_sensor",
                 counting_get_sensor,
             )
 
@@ -806,7 +808,7 @@ class TestLockUpdateCoordinator:
                 call_count += 1
 
             monkeypatch.setattr(
-                "custom_components.ttlock.api.TTLockApi.get_sensor",
+                "custom_components.ttlock_connect.api.TTLockApi.get_sensor",
                 counting_get_sensor,
             )
 

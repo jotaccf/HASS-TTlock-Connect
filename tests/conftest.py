@@ -22,12 +22,12 @@ from home_assistant_bluetooth import BluetoothServiceInfoBleak
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.ttlock.api import TTLockApi
-from custom_components.ttlock.ble_protocol import FrameAssembler
-from custom_components.ttlock.capture import LockTrafficCapture
-from custom_components.ttlock.const import DOMAIN, TT_LOCKS
-from custom_components.ttlock.coordinator import LockUpdateCoordinator
-from custom_components.ttlock.models import (
+from custom_components.ttlock_connect.api import TTLockApi
+from custom_components.ttlock_connect.ble_protocol import FrameAssembler
+from custom_components.ttlock_connect.capture import LockTrafficCapture
+from custom_components.ttlock_connect.const import DOMAIN, TT_LOCKS
+from custom_components.ttlock_connect.coordinator import LockUpdateCoordinator
+from custom_components.ttlock_connect.models import (
     Lock,
     LockRecord,
     LockState,
@@ -35,7 +35,7 @@ from custom_components.ttlock.models import (
     PassageModeConfig,
     Sensor,
 )
-from custom_components.ttlock.store import LockStateStore
+from custom_components.ttlock_connect.store import LockStateStore
 from homeassistant import components as ha_components
 from homeassistant.components.application_credentials import (
     ClientCredential,
@@ -273,31 +273,32 @@ def mock_api_responses(monkeypatch, mock_data_factory):
             return []
 
         monkeypatch.setattr(
-            "custom_components.ttlock.api.TTLockApi.get_locks", mock_get_locks
+            "custom_components.ttlock_connect.api.TTLockApi.get_locks", mock_get_locks
         )
         monkeypatch.setattr(
-            "custom_components.ttlock.api.TTLockApi.get_lock", mock_get_lock
+            "custom_components.ttlock_connect.api.TTLockApi.get_lock", mock_get_lock
         )
         monkeypatch.setattr(
-            "custom_components.ttlock.api.TTLockApi.get_sensor", mock_get_sensor
+            "custom_components.ttlock_connect.api.TTLockApi.get_sensor", mock_get_sensor
         )
         monkeypatch.setattr(
-            "custom_components.ttlock.api.TTLockApi.get_lock_state", mock_get_lock_state
+            "custom_components.ttlock_connect.api.TTLockApi.get_lock_state",
+            mock_get_lock_state,
         )
         monkeypatch.setattr(
-            "custom_components.ttlock.api.TTLockApi.get_lock_passage_mode_config",
+            "custom_components.ttlock_connect.api.TTLockApi.get_lock_passage_mode_config",
             mock_get_passage_mode,
         )
         monkeypatch.setattr(
-            "custom_components.ttlock.api.TTLockApi.get_lock_records",
+            "custom_components.ttlock_connect.api.TTLockApi.get_lock_records",
             mock_get_lock_records,
         )
         monkeypatch.setattr(
-            "custom_components.ttlock.api.TTLockApi.get_gateways",
+            "custom_components.ttlock_connect.api.TTLockApi.get_gateways",
             mock_get_gateways,
         )
         monkeypatch.setattr(
-            "custom_components.ttlock.api.TTLockApi.get_gateways_for_lock",
+            "custom_components.ttlock_connect.api.TTLockApi.get_gateways_for_lock",
             mock_get_gateways_for_lock,
         )
 

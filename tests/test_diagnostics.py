@@ -7,16 +7,21 @@ from unittest.mock import AsyncMock, MagicMock
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
-from custom_components.ttlock.api import TTLockApi
-from custom_components.ttlock.capture import LockTrafficCapture
-from custom_components.ttlock.const import DOMAIN, TO_REDACT, TT_GATEWAYS, TT_LOCKS
-from custom_components.ttlock.coordinator import LockUpdateCoordinator
-from custom_components.ttlock.diagnostics import (
+from custom_components.ttlock_connect.api import TTLockApi
+from custom_components.ttlock_connect.capture import LockTrafficCapture
+from custom_components.ttlock_connect.const import (
+    DOMAIN,
+    TO_REDACT,
+    TT_GATEWAYS,
+    TT_LOCKS,
+)
+from custom_components.ttlock_connect.coordinator import LockUpdateCoordinator
+from custom_components.ttlock_connect.diagnostics import (
     async_get_config_entry_diagnostics,
     async_get_device_diagnostics,
 )
-from custom_components.ttlock.models import Gateway, LockSummary
-from custom_components.ttlock.store import LockStateStore
+from custom_components.ttlock_connect.models import Gateway, LockSummary
+from custom_components.ttlock_connect.store import LockStateStore
 from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
@@ -46,7 +51,7 @@ def _mock_connectable_and_gatewayless_lock(monkeypatch) -> None:
         ]
 
     monkeypatch.setattr(
-        "custom_components.ttlock.api.TTLockApi.get_locks", mock_get_locks
+        "custom_components.ttlock_connect.api.TTLockApi.get_locks", mock_get_locks
     )
 
 
@@ -103,7 +108,7 @@ async def test_diagnostics_includes_raw_connectivity_fields_and_gateway_status(
         ]
 
     monkeypatch.setattr(
-        "custom_components.ttlock.api.TTLockApi.get_locks", mock_get_locks
+        "custom_components.ttlock_connect.api.TTLockApi.get_locks", mock_get_locks
     )
 
     async def mock_get_gateways(*args, **kwargs):
@@ -119,7 +124,7 @@ async def test_diagnostics_includes_raw_connectivity_fields_and_gateway_status(
         ]
 
     monkeypatch.setattr(
-        "custom_components.ttlock.api.TTLockApi.get_gateways", mock_get_gateways
+        "custom_components.ttlock_connect.api.TTLockApi.get_gateways", mock_get_gateways
     )
 
     await component_setup()
@@ -168,7 +173,7 @@ async def test_device_diagnostics_matches_config_entry_lock_entry(
     }
 
 
-DEBUG_CAPTURE_DEVICE_LOGGER_NAME = "custom_components.ttlock.device.7252408"
+DEBUG_CAPTURE_DEVICE_LOGGER_NAME = "custom_components.ttlock_connect.device.7252408"
 
 
 async def _refresh_captured_lock(hass: HomeAssistant) -> tuple[dict, dict]:

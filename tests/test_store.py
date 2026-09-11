@@ -1,6 +1,6 @@
 """Test the persisted per-lock LockStateStore."""
 
-from custom_components.ttlock.store import LockStateStore
+from custom_components.ttlock_connect.store import LockStateStore
 
 
 async def test_get_returns_empty_dict_for_unknown_lock(hass):

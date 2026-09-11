@@ -7,13 +7,13 @@ from aiohttp import ClientResponseError
 import pytest
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
-from custom_components.ttlock.api import (
+from custom_components.ttlock_connect.api import (
     RequestFailed,
     TTLockApi,
     TTLockAuthImplementation,
 )
-from custom_components.ttlock.capture import LockTrafficCapture
-from custom_components.ttlock.models import (
+from custom_components.ttlock_connect.capture import LockTrafficCapture
+from custom_components.ttlock_connect.models import (
     AddPasscodeConfig,
     Card,
     CardType,
@@ -175,18 +175,22 @@ class TestPerLockLogging:
         # the handler itself open to DEBUG records - device.2 is still
         # excluded because its *logger* (not the shared handler) stays at
         # WARNING.
-        caplog.set_level(logging.WARNING, logger="custom_components.ttlock.device.2")
-        caplog.set_level(logging.DEBUG, logger="custom_components.ttlock.device.1")
+        caplog.set_level(
+            logging.WARNING, logger="custom_components.ttlock_connect.device.2"
+        )
+        caplog.set_level(
+            logging.DEBUG, logger="custom_components.ttlock_connect.device.1"
+        )
 
         await ttlock_api.get("lock/detail", lockId=1)
         await ttlock_api.get("lock/queryOpenState", lockId=2)
 
         assert any(
-            record.name == "custom_components.ttlock.device.1"
+            record.name == "custom_components.ttlock_connect.device.1"
             for record in caplog.records
         )
         assert not any(
-            record.name == "custom_components.ttlock.device.2"
+            record.name == "custom_components.ttlock_connect.device.2"
             for record in caplog.records
         )
 
@@ -194,13 +198,15 @@ class TestPerLockLogging:
         self, ttlock_api: TTLockApi, mocker: AiohttpClientMocker, caplog
     ):
         mocker.get(f"{BASE}lock/detail", json={"errcode": 0})
-        caplog.set_level(logging.DEBUG, logger="custom_components.ttlock.device.42")
+        caplog.set_level(
+            logging.DEBUG, logger="custom_components.ttlock_connect.device.42"
+        )
 
         await ttlock_api.get("lock/detail", lockId=42)
 
         assert any(
             "Sending request" in record.message
-            and record.name == "custom_components.ttlock.device.42"
+            and record.name == "custom_components.ttlock_connect.device.42"
             for record in caplog.records
         )
 
@@ -208,12 +214,13 @@ class TestPerLockLogging:
         self, ttlock_api: TTLockApi, mocker: AiohttpClientMocker, caplog
     ):
         mocker.get(f"{BASE}lock/list", json={"list": []})
-        caplog.set_level(logging.DEBUG, logger="custom_components.ttlock.api")
+        caplog.set_level(logging.DEBUG, logger="custom_components.ttlock_connect.api")
 
         await ttlock_api.get_locks()
 
         assert any(
-            record.name == "custom_components.ttlock.api" for record in caplog.records
+            record.name == "custom_components.ttlock_connect.api"
+            for record in caplog.records
         )
 
 
