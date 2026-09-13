@@ -23,6 +23,7 @@ This integration uses the TTLock Cloud to communicate with your locks. It suppor
 - **Usage simulator**: the options form and an "Estimated Monthly" sensor calculate what your configured polling cadence will cost in API calls, based on your device count
 - **Quota-saving polling controls**: every polling interval is tunable, including a webhook-only mode that nearly eliminates polling once webhooks are confirmed working
 - **Manual sync mode**: disable all scheduled polling and refresh on demand with the "TTLock Sync Now" button — webhooks and Bluetooth keep state updated in real time
+- **Per-lock sync buttons**: every lock gets its own `<Lock name> Sync` button, so you can refresh a single lock from the dashboard without touching the rest
 
 # Usage
 
@@ -58,7 +59,8 @@ TTLock's developer plans have a monthly API-call budget, and multi-lock accounts
   - *Detail refresh interval*: how often slow-changing detail is re-fetched (default 6 h).
   - *Gateway status interval*: how often gateway online/offline status is checked (default 15 min). This is one call per check regardless of lock count — raising it to 60 min saves ~2200 calls/month on its own.
   - *Webhook-only state updates*: once your webhook is confirmed working, skip the per-poll cloud state check entirely and rely on webhooks (and Bluetooth, when in range). Saves one call per lock per poll; only the initial state after a restart comes from the cloud.
-  - *Manual sync only*: disable every scheduled poll. Data is fetched only at startup, when you press the **TTLock Sync Now** button (on the TTLock Cloud API device), or via the `update_state` action. Webhooks and Bluetooth still deliver real-time state.
+  - *Manual sync only*: disable every scheduled poll. Data is fetched only at startup, when you press the **TTLock Sync Now** button (on the TTLock Cloud API device), a per-lock **Sync** button, or via the `update_state` action. Webhooks and Bluetooth still deliver real-time state.
+- **Per-lock sync** — each lock's device has a `button.<lock_name>_sync` entity that refreshes just that lock (one `lock/queryOpenState` call, plus detail only when the slow interval is due). Add these buttons to a dashboard to sync lock-by-lock; **TTLock Sync Now** remains the everything-at-once refresh.
 - **Cost simulator** — the options form shows how many API calls per month the currently saved settings make for your number of locks, and the `TTLock API Calls Estimated Monthly` sensor keeps that estimate on your dashboard, recalculated whenever you change the options.
 
 ## Running alongside the original TTLock integration
