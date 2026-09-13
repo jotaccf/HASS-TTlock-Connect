@@ -8,6 +8,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.ttlock_connect.api import TTLockAuthImplementation
 from custom_components.ttlock_connect.const import (
     CONF_GATEWAY_POLL_INTERVAL,
+    CONF_MANUAL_SYNC,
     CONF_POLL_INTERVAL,
     CONF_REGION,
     CONF_SLOW_POLL_INTERVAL,
@@ -126,3 +127,4 @@ async def test_options_flow_defaults_new_fields(hass: HomeAssistant):
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert entry.options[CONF_GATEWAY_POLL_INTERVAL] == 15
     assert entry.options[CONF_WEBHOOK_ONLY] is False
+    assert entry.options[CONF_MANUAL_SYNC] is False

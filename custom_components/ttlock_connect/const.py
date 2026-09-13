@@ -58,6 +58,12 @@ DEFAULT_GATEWAY_POLL_INTERVAL_MINUTES = 15
 CONF_WEBHOOK_ONLY = "webhook_only"
 DEFAULT_WEBHOOK_ONLY = False
 
+# Manual-sync mode: no scheduled polling at all. State still arrives via
+# webhooks and passive Bluetooth; cloud data is fetched only at startup, when
+# the "Sync now" button is pressed, or via the update_state action.
+CONF_MANUAL_SYNC = "manual_sync"
+DEFAULT_MANUAL_SYNC = False
+
 SIGNAL_NEW_DATA = f"{DOMAIN}.data_received"
 
 # Fired by api_stats.ApiCallCounter on every recorded API call, so the usage
@@ -115,3 +121,10 @@ SVC_DELETE_CARD = "delete_card"
 SVC_LIST_FINGERPRINTS = "list_fingerprints"
 SVC_RENAME_FINGERPRINT = "rename_fingerprint"
 SVC_DELETE_FINGERPRINT = "delete_fingerprint"
+SVC_LIST_EKEYS = "list_ekeys"
+SVC_SEND_EKEY = "send_ekey"
+SVC_DELETE_EKEY = "delete_ekey"
+SVC_FREEZE_EKEY = "freeze_ekey"
+SVC_UNFREEZE_EKEY = "unfreeze_ekey"
+SVC_SET_EKEY_PERIOD = "set_ekey_period"
+SVC_MODIFY_EKEY = "modify_ekey"

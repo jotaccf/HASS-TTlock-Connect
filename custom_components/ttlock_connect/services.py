@@ -28,15 +28,22 @@ from .const import (
     SVC_CONFIG_PASSAGE_MODE,
     SVC_CREATE_PASSCODE,
     SVC_DELETE_CARD,
+    SVC_DELETE_EKEY,
     SVC_DELETE_FINGERPRINT,
     SVC_DELETE_PASSCODE,
+    SVC_FREEZE_EKEY,
     SVC_LIST_CARDS,
+    SVC_LIST_EKEYS,
     SVC_LIST_FINGERPRINTS,
     SVC_LIST_PASSCODES,
     SVC_LIST_RECORDS,
+    SVC_MODIFY_EKEY,
     SVC_MODIFY_PASSCODE,
     SVC_RENAME_CARD,
     SVC_RENAME_FINGERPRINT,
+    SVC_SEND_EKEY,
+    SVC_SET_EKEY_PERIOD,
+    SVC_UNFREEZE_EKEY,
     SVC_UPDATE_STATE,
 )
 from .coordinator import LockUpdateCoordinator, coordinator_for
@@ -283,6 +290,110 @@ class Services:
                     vol.Required(ATTR_ENTITY_ID): cv.entity_ids,
                     vol.Required("fingerprint_id"): cv.positive_int,
                 }
+            ),
+        )
+
+        self.hass.services.register(
+            DOMAIN,
+            SVC_LIST_EKEYS,
+            self.handle_list_ekeys,
+            schema=vol.Schema(
+                {
+                    vol.Required(ATTR_ENTITY_ID): cv.entity_ids,
+                }
+            ),
+            supports_response=SupportsResponse.ONLY,
+        )
+
+        self.hass.services.register(
+            DOMAIN,
+            SVC_SEND_EKEY,
+            self.handle_send_ekey,
+            schema=vol.All(  # ty: ignore[invalid-argument-type] - vol.All is a valid voluptuous validator
+                vol.Schema(
+                    {
+                        vol.Required(ATTR_ENTITY_ID): cv.entity_ids,
+                        vol.Required("receiver_username"): cv.string,
+                        vol.Required("name"): cv.string,
+                        vol.Optional("start_time"): cv.datetime,
+                        vol.Optional("end_time"): cv.datetime,
+                        vol.Optional("remarks"): cv.string,
+                        vol.Optional("remote_enable"): cv.boolean,
+                        vol.Optional("create_user", default=False): cv.boolean,
+                    }
+                ),
+                _validate_start_and_end_time_together,
+            ),
+            supports_response=SupportsResponse.OPTIONAL,
+        )
+
+        self.hass.services.register(
+            DOMAIN,
+            SVC_DELETE_EKEY,
+            self.handle_delete_ekey,
+            schema=vol.Schema(
+                {
+                    vol.Required(ATTR_ENTITY_ID): cv.entity_ids,
+                    vol.Required("key_id"): cv.positive_int,
+                }
+            ),
+        )
+
+        self.hass.services.register(
+            DOMAIN,
+            SVC_FREEZE_EKEY,
+            self.handle_freeze_ekey,
+            schema=vol.Schema(
+                {
+                    vol.Required(ATTR_ENTITY_ID): cv.entity_ids,
+                    vol.Required("key_id"): cv.positive_int,
+                }
+            ),
+        )
+
+        self.hass.services.register(
+            DOMAIN,
+            SVC_UNFREEZE_EKEY,
+            self.handle_unfreeze_ekey,
+            schema=vol.Schema(
+                {
+                    vol.Required(ATTR_ENTITY_ID): cv.entity_ids,
+                    vol.Required("key_id"): cv.positive_int,
+                }
+            ),
+        )
+
+        self.hass.services.register(
+            DOMAIN,
+            SVC_SET_EKEY_PERIOD,
+            self.handle_set_ekey_period,
+            schema=vol.All(  # ty: ignore[invalid-argument-type] - vol.All is a valid voluptuous validator
+                vol.Schema(
+                    {
+                        vol.Required(ATTR_ENTITY_ID): cv.entity_ids,
+                        vol.Required("key_id"): cv.positive_int,
+                        vol.Optional("start_time"): cv.datetime,
+                        vol.Optional("end_time"): cv.datetime,
+                    }
+                ),
+                _validate_start_and_end_time_together,
+            ),
+        )
+
+        self.hass.services.register(
+            DOMAIN,
+            SVC_MODIFY_EKEY,
+            self.handle_modify_ekey,
+            schema=vol.All(  # ty: ignore[invalid-argument-type] - vol.All is a valid voluptuous validator
+                vol.Schema(
+                    {
+                        vol.Required(ATTR_ENTITY_ID): cv.entity_ids,
+                        vol.Required("key_id"): cv.positive_int,
+                        vol.Optional("name"): cv.string,
+                        vol.Optional("remote_enable"): cv.boolean,
+                    }
+                ),
+                cv.has_at_least_one_key("name", "remote_enable"),
             ),
         )
 
@@ -584,3 +695,102 @@ class Services:
             await coordinator.api.delete_fingerprint(
                 coordinator.lock_id, fingerprint_id
             )
+
+    @staticmethod
+    def _period_ms(call: ServiceCall) -> tuple[int, int]:
+        """The service's start/end datetimes as epoch-ms, 0/0 = permanent."""
+        start_time = call.data.get("start_time")
+        end_time = call.data.get("end_time")
+        start_ms = int(as_utc(start_time).timestamp() * 1000) if start_time else 0
+        end_ms = int(as_utc(end_time).timestamp() * 1000) if end_time else 0
+        return start_ms, end_ms
+
+    async def handle_list_ekeys(self, call: ServiceCall) -> ServiceResponse:
+        """List all ekeys granted on the selected locks."""
+        ekeys = {}
+
+        for entity_id, coordinator in self._get_coordinators(call).items():
+            granted = await coordinator.api.list_ekeys(coordinator.lock_id)
+            ekeys[entity_id] = [
+                {
+                    "id": ekey.id,
+                    "name": ekey.name,
+                    "username": ekey.username,
+                    "sender": ekey.sender,
+                    "status": ekey.status.name,
+                    "start_date": ekey.start_date.isoformat()
+                    if ekey.start_date
+                    else None,
+                    "end_date": ekey.end_date.isoformat() if ekey.end_date else None,
+                    "expired": ekey.expired,
+                    "remote_enable": bool(ekey.remote_enable),
+                    "remarks": ekey.remarks,
+                }
+                for ekey in granted
+            ]
+
+        return {"ekeys": ekeys}  # ty: ignore[invalid-return-type] - dict/list generics are invariant, so this structurally-JSON-safe dict isn't recognized as a dict[str, JsonValueType] subtype
+
+    async def handle_send_ekey(self, call: ServiceCall) -> ServiceResponse:
+        """Send an ekey for the selected locks to another TTLock account."""
+        start_ms, end_ms = self._period_ms(call)
+        sent: dict[str, int | None] = {}
+
+        for entity_id, coordinator in self._get_coordinators(call).items():
+            sent[entity_id] = await coordinator.api.send_ekey(
+                coordinator.lock_id,
+                receiver_username=call.data["receiver_username"],
+                name=call.data["name"],
+                start_ms=start_ms,
+                end_ms=end_ms,
+                remarks=call.data.get("remarks"),
+                remote_enable=call.data.get("remote_enable"),
+                create_user=call.data.get("create_user", False),
+            )
+
+        return {"key_ids": sent} if call.return_response else None  # ty: ignore[invalid-return-type] - dict/list generics are invariant, so this structurally-JSON-safe dict isn't recognized as a dict[str, JsonValueType] subtype
+
+    async def handle_delete_ekey(self, call: ServiceCall):
+        """Revoke an ekey. The selected lock identifies the account to act on."""
+        key_id = call.data["key_id"]
+        for coordinator in self._first_coordinator(call):
+            await coordinator.api.delete_ekey(key_id)
+
+    async def handle_freeze_ekey(self, call: ServiceCall):
+        """Temporarily disable an ekey."""
+        key_id = call.data["key_id"]
+        for coordinator in self._first_coordinator(call):
+            await coordinator.api.freeze_ekey(key_id)
+
+    async def handle_unfreeze_ekey(self, call: ServiceCall):
+        """Re-enable a frozen ekey."""
+        key_id = call.data["key_id"]
+        for coordinator in self._first_coordinator(call):
+            await coordinator.api.unfreeze_ekey(key_id)
+
+    async def handle_set_ekey_period(self, call: ServiceCall):
+        """Change an ekey's validity period (omit both times for permanent)."""
+        key_id = call.data["key_id"]
+        start_ms, end_ms = self._period_ms(call)
+        for coordinator in self._first_coordinator(call):
+            await coordinator.api.set_ekey_period(key_id, start_ms, end_ms)
+
+    async def handle_modify_ekey(self, call: ServiceCall):
+        """Rename an ekey and/or toggle its remote-unlock right."""
+        key_id = call.data["key_id"]
+        for coordinator in self._first_coordinator(call):
+            await coordinator.api.modify_ekey(
+                key_id,
+                name=call.data.get("name"),
+                remote_enable=call.data.get("remote_enable"),
+            )
+
+    def _first_coordinator(self, call: ServiceCall) -> list[LockUpdateCoordinator]:
+        """The first selected lock's coordinator, as a 0-or-1 element list.
+
+        Ekey operations are keyed by the account-wide key_id, not by lock -
+        the entity only tells us which account's API client to use, so
+        acting once is correct even when several locks are selected.
+        """
+        coordinators = list(self._get_coordinators(call).values())
+        return coordinators[:1]

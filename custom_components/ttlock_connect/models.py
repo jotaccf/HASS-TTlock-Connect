@@ -326,6 +326,54 @@ class Fingerprint(BaseModel):
         return False
 
 
+class EkeyStatus(str, Enum):
+    """Status of an ekey.
+
+    Wire values per https://euopen.ttlock.com/document (ekey status codes);
+    anything unrecognized parses as `unknown` rather than failing the model.
+    """
+
+    normal = "110401"
+    pending = "110402"
+    frozen = "110405"
+    deleted = "110408"
+    reset = "110410"
+    unknown = ""
+
+    @classmethod
+    def _missing_(cls, value: object) -> "EkeyStatus":
+        return cls.unknown
+
+
+class Ekey(BaseModel):
+    """A single ekey (app-based key) granted on a lock."""
+
+    id: int | None = Field(None, alias="keyId")
+    lock_id: int | None = Field(None, alias="lockId")
+    name: str | None = Field(None, alias="keyName")
+    username: str | None = None
+    sender: str | None = Field(None, alias="senderUsername")
+    status: EkeyStatus = Field(EkeyStatus.unknown, alias="keyStatus")
+    start_date: EpochMs | None = Field(None, alias="startDate")
+    end_date: EpochMs | None = Field(None, alias="endDate")
+    key_right: int | None = Field(None, alias="keyRight")
+    remote_enable: OnOff = Field(OnOff.unknown, alias="remoteEnable")
+    remarks: str | None = None
+
+    @field_validator("start_date", "end_date", mode="before")
+    @classmethod
+    def _zero_is_permanent(cls, value: int | None) -> int | None:
+        # The API uses startDate == endDate == 0 to mean a permanent credential.
+        return value or None
+
+    @property
+    def expired(self) -> bool:
+        """True if the ekey has an end date that is in the past."""
+        if self.end_date:
+            return self.end_date < dt_util.now()
+        return False
+
+
 class RecordType(IntEnum):
     """Type of lock record."""
 

@@ -34,18 +34,20 @@
     "step": {
       "init": {
         "title": "Polling cadence",
-        "description": "How often the integration polls the TTLock cloud. Locks also update in near real time via webhooks, so these can stay high to keep multi-lock accounts under TTLock's free-tier API-call limit. Lower the poll interval if your webhooks are unreliable. The 'TTLock API Calls' sensors show current usage and a monthly projection.",
+        "description": "How often the integration polls the TTLock cloud. Locks also update in near real time via webhooks, so these can stay high to keep multi-lock accounts under TTLock's free-tier API-call limit. Lower the poll interval if your webhooks are unreliable.\n\n**With the currently saved settings and your {locks} connectable lock(s), scheduled polling makes about {estimate} API calls per month.** After saving, reopen this form (or check the 'TTLock API Calls Estimated Monthly' sensor) to see the recalculated number.",
         "data": {
           "poll_interval": "Poll interval",
           "slow_poll_interval": "Detail refresh interval",
           "gateway_poll_interval": "Gateway status interval",
-          "webhook_only": "Webhook-only state updates"
+          "webhook_only": "Webhook-only state updates",
+          "manual_sync": "Manual sync only"
         },
         "data_description": {
           "poll_interval": "How often to re-check whether each lock is locked or unlocked, in minutes.",
           "slow_poll_interval": "How often to refresh slow-changing detail (battery, name, autolock and passage-mode config, gateway signal), in hours.",
           "gateway_poll_interval": "How often to check whether gateways are online, in minutes. One API call per check, regardless of how many locks you have.",
-          "webhook_only": "Once webhooks are confirmed working, stop re-checking lock state against the cloud on every poll and rely on webhooks (and Bluetooth, if in range) instead. Saves one API call per lock per poll; only the initial state after a restart is fetched from the cloud."
+          "webhook_only": "Once webhooks are confirmed working, stop re-checking lock state against the cloud on every poll and rely on webhooks (and Bluetooth, if in range) instead. Saves one API call per lock per poll; only the initial state after a restart is fetched from the cloud.",
+          "manual_sync": "Disable ALL scheduled polling. Data is fetched only at startup, when you press the 'TTLock Sync Now' button, or via the update_state action. Webhooks and Bluetooth still update lock state in real time. Overrides the intervals above."
         }
       }
     }

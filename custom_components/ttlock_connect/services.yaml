@@ -3,7 +3,7 @@ configure_passage_mode:
   description: Tries to configure passage mode for a lock (or set of locks)
   target:
     entity:
-      integration: ttlock
+      integration: ttlock_connect
       domain: lock
   fields:
     enabled:
@@ -78,7 +78,7 @@ create_passcode:
   description: Tries to create a new passcode for a lock. If no start/end time is provided, the passcode will be valid forever.
   target:
     entity:
-      integration: ttlock
+      integration: ttlock_connect
       domain: lock
   fields:
     passcode_name:
@@ -114,7 +114,7 @@ modify_passcode:
   description: Modifies an existing passcode for a lock.
   target:
     entity:
-      integration: ttlock
+      integration: ttlock_connect
       domain: lock
   fields:
     passcode_id:
@@ -156,7 +156,7 @@ delete_passcode:
   description: Deletes a specific passcode from a lock.
   target:
     entity:
-      integration: ttlock
+      integration: ttlock_connect
       domain: lock
   fields:
     passcode_id:
@@ -172,7 +172,7 @@ cleanup_passcodes:
   description: Lists all passcodes for the selected lock and deletes ALL expired passcodes (where the end of validity date is older is past).
   target:
     entity:
-      integration: ttlock
+      integration: ttlock_connect
       domain: lock
 
 list_passcodes:
@@ -180,7 +180,7 @@ list_passcodes:
   description: Lists all passcodes for the selected lock, including their names, codes, and validity periods.
   target:
     entity:
-      integration: ttlock
+      integration: ttlock_connect
       domain: lock
 
 list_records:
@@ -188,7 +188,7 @@ list_records:
   description: Lists operation records for the selected lock.
   target:
     entity:
-      integration: ttlock
+      integration: ttlock_connect
       domain: lock
   fields:
     start_date:
@@ -227,7 +227,7 @@ configure_autolock:
   description: Configure Autolock of the device.
   target:
     entity:
-      integration: ttlock
+      integration: ttlock_connect
       domain: lock
   fields:
     enabled:
@@ -252,7 +252,7 @@ update_state:
   description: Forces a refresh of the lock state from the API.
   target:
     entity:
-      integration: ttlock
+      integration: ttlock_connect
       domain: lock
 
 list_cards:
@@ -260,7 +260,7 @@ list_cards:
   description: Lists all IC cards enrolled on the selected lock, including their names, numbers, and validity periods.
   target:
     entity:
-      integration: ttlock
+      integration: ttlock_connect
       domain: lock
 
 rename_card:
@@ -268,7 +268,7 @@ rename_card:
   description: Renames an IC card enrolled on the selected lock.
   target:
     entity:
-      integration: ttlock
+      integration: ttlock_connect
       domain: lock
   fields:
     card_id:
@@ -291,7 +291,7 @@ delete_card:
   description: Deletes a specific IC card from the selected lock (via gateway or WiFi lock).
   target:
     entity:
-      integration: ttlock
+      integration: ttlock_connect
       domain: lock
   fields:
     card_id:
@@ -308,7 +308,7 @@ list_fingerprints:
   description: Lists all fingerprints enrolled on the selected lock, including their names and validity periods.
   target:
     entity:
-      integration: ttlock
+      integration: ttlock_connect
       domain: lock
 
 rename_fingerprint:
@@ -316,7 +316,7 @@ rename_fingerprint:
   description: Renames a fingerprint enrolled on the selected lock.
   target:
     entity:
-      integration: ttlock
+      integration: ttlock_connect
       domain: lock
   fields:
     fingerprint_id:
@@ -339,7 +339,7 @@ delete_fingerprint:
   description: Deletes a specific fingerprint from the selected lock (via gateway or WiFi lock).
   target:
     entity:
-      integration: ttlock
+      integration: ttlock_connect
       domain: lock
   fields:
     fingerprint_id:
@@ -350,3 +350,172 @@ delete_fingerprint:
         number:
           min: 1
           mode: box
+
+list_ekeys:
+  name: List eKeys
+  description: Lists all eKeys (app-based keys) granted on the selected lock, including receiver, status and validity periods.
+  target:
+    entity:
+      integration: ttlock_connect
+      domain: lock
+
+send_ekey:
+  name: Send an eKey
+  description: Sends an eKey for the selected lock to another TTLock account, so that person can operate the lock from their TTLock app. If no start/end time is provided, the eKey is permanent.
+  target:
+    entity:
+      integration: ttlock_connect
+      domain: lock
+  fields:
+    receiver_username:
+      name: Receiver username
+      description: The TTLock account (phone number or email) that will receive the eKey
+      required: true
+      selector:
+        text:
+    name:
+      name: eKey name
+      description: A name for this eKey (can be whatever you like)
+      required: true
+      selector:
+        text:
+    start_time:
+      name: Start date / time
+      description: When the eKey becomes valid (leave empty for a permanent key)
+      required: false
+      selector:
+        datetime:
+    end_time:
+      name: End date / time
+      description: When the eKey expires (leave empty for a permanent key)
+      required: false
+      selector:
+        datetime:
+    remote_enable:
+      name: Allow remote unlock
+      description: Whether the receiver may unlock remotely (via gateway/WiFi) rather than only over Bluetooth
+      required: false
+      selector:
+        boolean:
+    create_user:
+      name: Create account if missing
+      description: If the receiver's phone/email has no TTLock account yet, create one automatically (default password is the last six characters of the username)
+      required: false
+      default: false
+      selector:
+        boolean:
+    remarks:
+      name: Remarks
+      description: Optional comment attached to the eKey
+      required: false
+      selector:
+        text:
+
+delete_ekey:
+  name: Delete an eKey
+  description: Revokes an eKey. Select the lock the eKey belongs to; the key ID comes from the List eKeys action.
+  target:
+    entity:
+      integration: ttlock_connect
+      domain: lock
+  fields:
+    key_id:
+      name: eKey ID
+      description: The ID of the eKey to revoke (from the List eKeys action)
+      required: true
+      selector:
+        number:
+          min: 1
+          mode: box
+
+freeze_ekey:
+  name: Freeze an eKey
+  description: Temporarily disables an eKey without revoking it. Select the lock the eKey belongs to.
+  target:
+    entity:
+      integration: ttlock_connect
+      domain: lock
+  fields:
+    key_id:
+      name: eKey ID
+      description: The ID of the eKey to freeze (from the List eKeys action)
+      required: true
+      selector:
+        number:
+          min: 1
+          mode: box
+
+unfreeze_ekey:
+  name: Unfreeze an eKey
+  description: Re-enables a frozen eKey. Select the lock the eKey belongs to.
+  target:
+    entity:
+      integration: ttlock_connect
+      domain: lock
+  fields:
+    key_id:
+      name: eKey ID
+      description: The ID of the eKey to unfreeze (from the List eKeys action)
+      required: true
+      selector:
+        number:
+          min: 1
+          mode: box
+
+set_ekey_period:
+  name: Change an eKey's validity period
+  description: Changes when an eKey is valid. Leave both times empty to make it permanent. Select the lock the eKey belongs to.
+  target:
+    entity:
+      integration: ttlock_connect
+      domain: lock
+  fields:
+    key_id:
+      name: eKey ID
+      description: The ID of the eKey to change (from the List eKeys action)
+      required: true
+      selector:
+        number:
+          min: 1
+          mode: box
+    start_time:
+      name: Start date / time
+      description: When the eKey becomes valid
+      required: false
+      selector:
+        datetime:
+    end_time:
+      name: End date / time
+      description: When the eKey expires
+      required: false
+      selector:
+        datetime:
+
+modify_ekey:
+  name: Modify an eKey
+  description: Renames an eKey and/or changes its remote-unlock right. Select the lock the eKey belongs to.
+  target:
+    entity:
+      integration: ttlock_connect
+      domain: lock
+  fields:
+    key_id:
+      name: eKey ID
+      description: The ID of the eKey to modify (from the List eKeys action)
+      required: true
+      selector:
+        number:
+          min: 1
+          mode: box
+    name:
+      name: eKey name
+      description: The new name for this eKey
+      required: false
+      selector:
+        text:
+    remote_enable:
+      name: Allow remote unlock
+      description: Whether the receiver may unlock remotely (via gateway/WiFi)
+      required: false
+      selector:
+        boolean:

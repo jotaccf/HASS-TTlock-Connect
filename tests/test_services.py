@@ -12,20 +12,28 @@ from custom_components.ttlock_connect.const import (
     SVC_CONFIG_AUTOLOCK,
     SVC_CREATE_PASSCODE,
     SVC_DELETE_CARD,
+    SVC_DELETE_EKEY,
     SVC_DELETE_FINGERPRINT,
     SVC_DELETE_PASSCODE,
+    SVC_FREEZE_EKEY,
     SVC_LIST_CARDS,
+    SVC_LIST_EKEYS,
     SVC_LIST_FINGERPRINTS,
     SVC_LIST_PASSCODES,
     SVC_LIST_RECORDS,
+    SVC_MODIFY_EKEY,
     SVC_MODIFY_PASSCODE,
     SVC_RENAME_CARD,
     SVC_RENAME_FINGERPRINT,
+    SVC_SEND_EKEY,
+    SVC_SET_EKEY_PERIOD,
+    SVC_UNFREEZE_EKEY,
     SVC_UPDATE_STATE,
 )
 from custom_components.ttlock_connect.models import (
     AddPasscodeConfig,
     Card,
+    Ekey,
     Fingerprint,
     LockRecord,
     Passcode,
@@ -1068,3 +1076,298 @@ class Test_delete_fingerprint:
             )
             await hass.async_block_till_done()
             assert mock.call_args_list == [call(coordinator.lock_id, 224242)]
+
+
+class Test_list_ekeys:
+    async def test_list_ekeys(
+        self, hass: HomeAssistant, component_setup, mock_api_responses
+    ):
+        """Test list_ekeys service."""
+        mock_api_responses("default")
+        coordinator = await component_setup()
+        entity_id = coordinator.entities[0].entity_id
+
+        start_time = dt_util.now() - timedelta(days=1)
+        end_time = dt_util.now() + timedelta(weeks=2)
+        ekey = Ekey(
+            keyId=3234293,
+            lockId=coordinator.lock_id,
+            keyName="Ekey for Jack",
+            username="jack@google.com",
+            senderUsername="alexa@google.com",
+            keyStatus="110401",
+            startDate=int(start_time.timestamp() * 1000),
+            endDate=int(end_time.timestamp() * 1000),
+            keyRight=1,
+            remoteEnable=1,
+            remarks="Wish you a happy rent.",
+        )
+
+        with patch(
+            "custom_components.ttlock_connect.api.TTLockApi.list_ekeys",
+            return_value=[ekey],
+        ) as mock:
+            response = await hass.services.async_call(
+                DOMAIN,
+                SVC_LIST_EKEYS,
+                {ATTR_ENTITY_ID: entity_id},
+                blocking=True,
+                return_response=True,
+            )
+            await hass.async_block_till_done()
+            assert mock.called
+
+        assert ekey.start_date is not None
+        assert ekey.end_date is not None
+        assert response == {
+            "ekeys": {
+                entity_id: [
+                    {
+                        "id": 3234293,
+                        "name": "Ekey for Jack",
+                        "username": "jack@google.com",
+                        "sender": "alexa@google.com",
+                        "status": "normal",
+                        "start_date": ekey.start_date.isoformat(),
+                        "end_date": ekey.end_date.isoformat(),
+                        "expired": False,
+                        "remote_enable": True,
+                        "remarks": "Wish you a happy rent.",
+                    }
+                ]
+            }
+        }
+
+    async def test_permanent_ekey_has_no_dates(
+        self, hass: HomeAssistant, component_setup, mock_api_responses
+    ):
+        """startDate == endDate == 0 means permanent, not 1970."""
+        mock_api_responses("default")
+        coordinator = await component_setup()
+        entity_id = coordinator.entities[0].entity_id
+
+        ekey = Ekey(keyId=1, keyName="Permanent", startDate=0, endDate=0)
+
+        with patch(
+            "custom_components.ttlock_connect.api.TTLockApi.list_ekeys",
+            return_value=[ekey],
+        ):
+            response = await hass.services.async_call(
+                DOMAIN,
+                SVC_LIST_EKEYS,
+                {ATTR_ENTITY_ID: entity_id},
+                blocking=True,
+                return_response=True,
+            )
+
+        assert response == {
+            "ekeys": {
+                entity_id: [
+                    {
+                        "id": 1,
+                        "name": "Permanent",
+                        "username": None,
+                        "sender": None,
+                        "status": "unknown",
+                        "start_date": None,
+                        "end_date": None,
+                        "expired": False,
+                        "remote_enable": False,
+                        "remarks": None,
+                    }
+                ]
+            }
+        }
+
+
+class Test_send_ekey:
+    async def test_send_permanent_ekey(
+        self, hass: HomeAssistant, component_setup, mock_api_responses
+    ):
+        """No start/end -> permanent key (0/0), response carries the key id."""
+        mock_api_responses("default")
+        coordinator = await component_setup()
+        entity_id = coordinator.entities[0].entity_id
+
+        with patch(
+            "custom_components.ttlock_connect.api.TTLockApi.send_ekey",
+            return_value=56323,
+        ) as mock:
+            response = await hass.services.async_call(
+                DOMAIN,
+                SVC_SEND_EKEY,
+                {
+                    ATTR_ENTITY_ID: entity_id,
+                    "receiver_username": "jack@google.com",
+                    "name": "Ekey for Jack",
+                },
+                blocking=True,
+                return_response=True,
+            )
+            await hass.async_block_till_done()
+            assert mock.call_args_list == [
+                call(
+                    coordinator.lock_id,
+                    receiver_username="jack@google.com",
+                    name="Ekey for Jack",
+                    start_ms=0,
+                    end_ms=0,
+                    remarks=None,
+                    remote_enable=None,
+                    create_user=False,
+                )
+            ]
+
+        assert response == {"key_ids": {entity_id: 56323}}
+
+    async def test_send_timed_ekey_converts_to_epoch_ms(
+        self, hass: HomeAssistant, component_setup, mock_api_responses
+    ):
+        mock_api_responses("default")
+        coordinator = await component_setup()
+        entity_id = coordinator.entities[0].entity_id
+
+        start_time = dt_util.now().replace(microsecond=0)
+        end_time = start_time + timedelta(weeks=2)
+
+        with patch(
+            "custom_components.ttlock_connect.api.TTLockApi.send_ekey",
+            return_value=1,
+        ) as mock:
+            await hass.services.async_call(
+                DOMAIN,
+                SVC_SEND_EKEY,
+                {
+                    ATTR_ENTITY_ID: entity_id,
+                    "receiver_username": "+35191234567",
+                    "name": "Guest",
+                    "start_time": start_time.isoformat(),
+                    "end_time": end_time.isoformat(),
+                    "create_user": True,
+                    "remote_enable": True,
+                    "remarks": "Enjoy",
+                },
+                blocking=True,
+            )
+            await hass.async_block_till_done()
+
+        kwargs = mock.call_args.kwargs
+        assert kwargs["start_ms"] == int(start_time.timestamp() * 1000)
+        assert kwargs["end_ms"] == int(end_time.timestamp() * 1000)
+        assert kwargs["create_user"] is True
+        assert kwargs["remote_enable"] is True
+        assert kwargs["remarks"] == "Enjoy"
+
+    async def test_start_time_without_end_time_rejected(
+        self, hass: HomeAssistant, component_setup, mock_api_responses
+    ):
+        mock_api_responses("default")
+        coordinator = await component_setup()
+        entity_id = coordinator.entities[0].entity_id
+
+        with pytest.raises(vol.Invalid):
+            await hass.services.async_call(
+                DOMAIN,
+                SVC_SEND_EKEY,
+                {
+                    ATTR_ENTITY_ID: entity_id,
+                    "receiver_username": "jack@google.com",
+                    "name": "Half-configured",
+                    "start_time": dt_util.now().isoformat(),
+                },
+                blocking=True,
+            )
+
+
+class Test_ekey_lifecycle:
+    """delete/freeze/unfreeze/period/modify act once per call, keyed by key_id."""
+
+    @pytest.mark.parametrize(
+        ("service", "api_method", "extra_data", "expected_call"),
+        [
+            (SVC_DELETE_EKEY, "delete_ekey", {}, call(3234293)),
+            (SVC_FREEZE_EKEY, "freeze_ekey", {}, call(3234293)),
+            (SVC_UNFREEZE_EKEY, "unfreeze_ekey", {}, call(3234293)),
+            (
+                SVC_MODIFY_EKEY,
+                "modify_ekey",
+                {"name": "Renamed"},
+                call(3234293, name="Renamed", remote_enable=None),
+            ),
+        ],
+    )
+    async def test_lifecycle_service_calls_api(
+        self,
+        hass: HomeAssistant,
+        component_setup,
+        mock_api_responses,
+        service,
+        api_method,
+        extra_data,
+        expected_call,
+    ):
+        mock_api_responses("default")
+        coordinator = await component_setup()
+        entity_id = coordinator.entities[0].entity_id
+
+        with patch(
+            f"custom_components.ttlock_connect.api.TTLockApi.{api_method}",
+            return_value=None,
+        ) as mock:
+            await hass.services.async_call(
+                DOMAIN,
+                service,
+                {ATTR_ENTITY_ID: entity_id, "key_id": 3234293, **extra_data},
+                blocking=True,
+            )
+            await hass.async_block_till_done()
+            assert mock.call_args_list == [expected_call]
+
+    async def test_set_ekey_period(
+        self, hass: HomeAssistant, component_setup, mock_api_responses
+    ):
+        mock_api_responses("default")
+        coordinator = await component_setup()
+        entity_id = coordinator.entities[0].entity_id
+
+        start_time = dt_util.now().replace(microsecond=0)
+        end_time = start_time + timedelta(days=7)
+
+        with patch(
+            "custom_components.ttlock_connect.api.TTLockApi.set_ekey_period",
+            return_value=None,
+        ) as mock:
+            await hass.services.async_call(
+                DOMAIN,
+                SVC_SET_EKEY_PERIOD,
+                {
+                    ATTR_ENTITY_ID: entity_id,
+                    "key_id": 3234293,
+                    "start_time": start_time.isoformat(),
+                    "end_time": end_time.isoformat(),
+                },
+                blocking=True,
+            )
+            await hass.async_block_till_done()
+            assert mock.call_args_list == [
+                call(
+                    3234293,
+                    int(start_time.timestamp() * 1000),
+                    int(end_time.timestamp() * 1000),
+                )
+            ]
+
+    async def test_modify_ekey_requires_a_change(
+        self, hass: HomeAssistant, component_setup, mock_api_responses
+    ):
+        mock_api_responses("default")
+        coordinator = await component_setup()
+        entity_id = coordinator.entities[0].entity_id
+
+        with pytest.raises(vol.Invalid):
+            await hass.services.async_call(
+                DOMAIN,
+                SVC_MODIFY_EKEY,
+                {ATTR_ENTITY_ID: entity_id, "key_id": 3234293},
+                blocking=True,
+            )

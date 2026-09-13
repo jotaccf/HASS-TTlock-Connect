@@ -26,9 +26,15 @@ from homeassistant.helpers.restore_state import RestoreEntity
 
 from .api_stats import ApiCallCounter
 from .ble import async_bluetooth_available
-from .const import DOMAIN, SIGNAL_API_CALL, TT_COUNTER
-from .coordinator import async_add_when_sensor_present, lock_coordinators
+from .const import CONF_WEBHOOK_STATUS, DOMAIN, SIGNAL_API_CALL, TT_COUNTER
+from .coordinator import (
+    LockUpdateCoordinator,
+    async_add_when_sensor_present,
+    lock_coordinators,
+)
 from .entity import BaseLockEntity
+from .models import Features
+from .usage_estimate import estimate_monthly_calls
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -61,6 +67,7 @@ async def async_setup_entry(
             ),
             ApiCallsToday(entry, counter),
             ApiCallsThisMonth(entry, counter),
+            ApiCallsEstimatedMonthly(entry, coordinators),
         ]
     )
 
@@ -275,6 +282,58 @@ class ApiCallsToday(ApiUsageSensor):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Today's calls by endpoint, busiest first."""
         return {"by_endpoint": self._counter.today_by_endpoint()}
+
+
+class ApiCallsEstimatedMonthly(SensorEntity):
+    """What the configured polling cadence costs per month, by the math.
+
+    Unlike ApiCallsThisMonth (measured) this is computed from the options
+    and device counts via usage_estimate.py - it's the number the options
+    flow promises, kept visible on the dashboard. Static per config: options
+    changes reload the entry, which rebuilds this entity with fresh values.
+    """
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_native_unit_of_measurement = "calls"
+    _attr_icon = "mdi:calculator"
+    _attr_should_poll = False
+
+    def __init__(
+        self, entry: ConfigEntry, coordinators: list[LockUpdateCoordinator]
+    ) -> None:
+        """Compute the estimate for this entry's options and locks."""
+        self._attr_unique_id = f"{entry.entry_id}-api-calls-estimate"
+        self._attr_name = "TTLock API Calls Estimated Monthly"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"api-usage-{entry.entry_id}")},
+            name="TTLock Cloud API",
+            manufacturer="TT Lock",
+            entry_type=DeviceEntryType.SERVICE,
+        )
+
+        connectable = [
+            coordinator for coordinator in coordinators if coordinator.connectable
+        ]
+        self._estimate = estimate_monthly_calls(
+            entry.options,
+            connectable_locks=len(connectable),
+            locks_with_gateway=sum(
+                1 for coordinator in connectable if coordinator.has_gateway
+            ),
+            locks_with_door_sensor=sum(
+                1
+                for coordinator in connectable
+                if Features.door_sensor in coordinator.data.features
+            ),
+            webhook_confirmed=bool(entry.data.get(CONF_WEBHOOK_STATUS)),
+        )
+        self._attr_native_value = self._estimate["total"]
+        self._attr_extra_state_attributes = {
+            "by_source": {
+                key: value for key, value in self._estimate.items() if key != "total"
+            },
+            "connectable_locks": len(connectable),
+        }
 
 
 class ApiCallsThisMonth(ApiUsageSensor):

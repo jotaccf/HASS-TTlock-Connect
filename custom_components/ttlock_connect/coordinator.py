@@ -43,11 +43,13 @@ from .ble_protocol import LockStatus, LockVersion, ProtocolError, parse_aes_key
 from .capture import LockTrafficCapture
 from .const import (
     CONF_GATEWAY_POLL_INTERVAL,
+    CONF_MANUAL_SYNC,
     CONF_POLL_INTERVAL,
     CONF_SLOW_POLL_INTERVAL,
     CONF_WEBHOOK_ONLY,
     CONF_WEBHOOK_STATUS,
     DEFAULT_GATEWAY_POLL_INTERVAL_MINUTES,
+    DEFAULT_MANUAL_SYNC,
     DEFAULT_POLL_INTERVAL_MINUTES,
     DEFAULT_SLOW_POLL_INTERVAL_HOURS,
     DEFAULT_WEBHOOK_ONLY,
@@ -278,6 +280,7 @@ class LockUpdateCoordinator(DataUpdateCoordinator[LockState]):
         )
         self._slow_interval = timedelta(hours=slow_hours)
         self._webhook_only = options.get(CONF_WEBHOOK_ONLY, DEFAULT_WEBHOOK_ONLY)
+        manual_sync = options.get(CONF_MANUAL_SYNC, DEFAULT_MANUAL_SYNC)
         self._details_last_fetched: datetime | None = None
         self._passage_last_fetched: datetime | None = None
         self._gateways_last_fetched: datetime | None = None
@@ -287,8 +290,13 @@ class LockUpdateCoordinator(DataUpdateCoordinator[LockState]):
             _LOGGER,
             name=DOMAIN,
             config_entry=config_entry,
+            # Manual-sync mode disables the schedule entirely - refreshes
+            # then only happen at startup, from the Sync Now button, or via
+            # the update_state action. Webhooks/BLE still push state.
             update_interval=(
-                timedelta(minutes=poll_minutes) if self.connectable else None
+                timedelta(minutes=poll_minutes)
+                if self.connectable and not manual_sync
+                else None
             ),
         )
 
@@ -739,13 +747,16 @@ class GatewaysUpdateCoordinator(DataUpdateCoordinator[dict[int, Gateway]]):
         gateway_minutes = options.get(
             CONF_GATEWAY_POLL_INTERVAL, DEFAULT_GATEWAY_POLL_INTERVAL_MINUTES
         )
+        manual_sync = options.get(CONF_MANUAL_SYNC, DEFAULT_MANUAL_SYNC)
 
         super().__init__(
             hass,
             _LOGGER,
             name=f"{DOMAIN}-gateways",
             config_entry=config_entry,
-            update_interval=timedelta(minutes=gateway_minutes),
+            update_interval=(
+                None if manual_sync else timedelta(minutes=gateway_minutes)
+            ),
         )
 
     async def _async_update_data(self) -> dict[int, Gateway]:

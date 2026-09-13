@@ -30,18 +30,20 @@
     "step": {
       "init": {
         "title": "Frequência de polling",
-        "description": "Com que frequência a integração consulta a cloud TTLock. As fechaduras também são actualizadas em tempo quase real via webhooks, por isso estes valores podem ficar altos para manter contas com várias fechaduras dentro do limite mensal de chamadas à API da TTLock. Reduza o intervalo de polling se os seus webhooks forem pouco fiáveis. Os sensores 'TTLock API Calls' mostram a utilização actual e uma projecção mensal.",
+        "description": "Com que frequência a integração consulta a cloud TTLock. As fechaduras também são actualizadas em tempo quase real via webhooks, por isso estes valores podem ficar altos para manter contas com várias fechaduras dentro do limite mensal de chamadas à API da TTLock. Reduza o intervalo de polling se os seus webhooks forem pouco fiáveis.\n\n**Com as definições actualmente guardadas e as suas {locks} fechadura(s) com ligação, o polling agendado faz cerca de {estimate} chamadas à API por mês.** Depois de guardar, reabra este formulário (ou consulte o sensor 'TTLock API Calls Estimated Monthly') para ver o número recalculado.",
         "data": {
           "poll_interval": "Intervalo de polling",
           "slow_poll_interval": "Intervalo de detalhes",
           "gateway_poll_interval": "Intervalo de estado dos gateways",
-          "webhook_only": "Estado apenas via webhooks"
+          "webhook_only": "Estado apenas via webhooks",
+          "manual_sync": "Apenas sincronização manual"
         },
         "data_description": {
           "poll_interval": "Com que frequência re-verificar se cada fechadura está trancada ou destrancada, em minutos.",
           "slow_poll_interval": "Com que frequência actualizar detalhes que mudam pouco (bateria, nome, configuração de autolock e modo de passagem, sinal do gateway), em horas.",
           "gateway_poll_interval": "Com que frequência verificar se os gateways estão online, em minutos. Uma chamada à API por verificação, independentemente do número de fechaduras.",
-          "webhook_only": "Depois de os webhooks estarem confirmados como funcionais, deixa de re-verificar o estado das fechaduras na cloud em cada poll e passa a confiar nos webhooks (e no Bluetooth, se ao alcance). Poupa uma chamada à API por fechadura por poll; apenas o estado inicial após um reinício é obtido da cloud."
+          "webhook_only": "Depois de os webhooks estarem confirmados como funcionais, deixa de re-verificar o estado das fechaduras na cloud em cada poll e passa a confiar nos webhooks (e no Bluetooth, se ao alcance). Poupa uma chamada à API por fechadura por poll; apenas o estado inicial após um reinício é obtido da cloud.",
+          "manual_sync": "Desactiva TODO o polling agendado. Os dados só são obtidos no arranque, quando carrega no botão 'TTLock Sync Now' ou através da acção update_state. Os webhooks e o Bluetooth continuam a actualizar o estado em tempo real. Sobrepõe-se aos intervalos acima."
         }
       }
     }

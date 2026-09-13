@@ -25,18 +25,24 @@ from homeassistant.helpers.selector import (
 
 from .const import (
     CONF_GATEWAY_POLL_INTERVAL,
+    CONF_MANUAL_SYNC,
     CONF_POLL_INTERVAL,
     CONF_REGION,
     CONF_SLOW_POLL_INTERVAL,
     CONF_WEBHOOK_ONLY,
+    CONF_WEBHOOK_STATUS,
     DEFAULT_GATEWAY_POLL_INTERVAL_MINUTES,
+    DEFAULT_MANUAL_SYNC,
     DEFAULT_POLL_INTERVAL_MINUTES,
     DEFAULT_REGION,
     DEFAULT_SLOW_POLL_INTERVAL_HOURS,
     DEFAULT_WEBHOOK_ONLY,
     DOMAIN,
     REGIONS,
+    TT_LOCKS,
 )
+from .models import Features
+from .usage_estimate import estimate_monthly_calls
 
 
 class TTLockAuthFlowHandler(
@@ -118,6 +124,39 @@ class TTLockOptionsFlow(OptionsFlow):
     any of them reloads the entry so new coordinators pick the values up.
     """
 
+    def _estimate_placeholders(self) -> dict[str, str]:
+        """Placeholders describing what the currently saved cadence costs.
+
+        Computed from the loaded coordinators (device counts) and the saved
+        options - the form can't recompute live as values are typed, so the
+        description shows the cost of what's saved now; saving reloads the
+        entry and reopening the form (or the Estimated Monthly sensor) shows
+        the updated number.
+        """
+        entry_data = self.hass.data.get(DOMAIN, {}).get(self.config_entry.entry_id)
+        locks = entry_data.get(TT_LOCKS) if entry_data else None
+        if locks is None:
+            return {"locks": "?", "estimate": "?"}
+
+        connectable = [coordinator for coordinator in locks if coordinator.connectable]
+        estimate = estimate_monthly_calls(
+            self.config_entry.options,
+            connectable_locks=len(connectable),
+            locks_with_gateway=sum(
+                1 for coordinator in connectable if coordinator.has_gateway
+            ),
+            locks_with_door_sensor=sum(
+                1
+                for coordinator in connectable
+                if Features.door_sensor in coordinator.data.features
+            ),
+            webhook_confirmed=bool(self.config_entry.data.get(CONF_WEBHOOK_STATUS)),
+        )
+        return {
+            "locks": str(len(connectable)),
+            "estimate": f"{estimate['total']:,}",
+        }
+
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
@@ -128,6 +167,7 @@ class TTLockOptionsFlow(OptionsFlow):
         options = self.config_entry.options
         return self.async_show_form(
             step_id="init",
+            description_placeholders=self._estimate_placeholders(),
             data_schema=vol.Schema(
                 {
                     vol.Required(
@@ -187,6 +227,10 @@ class TTLockOptionsFlow(OptionsFlow):
                     vol.Required(
                         CONF_WEBHOOK_ONLY,
                         default=options.get(CONF_WEBHOOK_ONLY, DEFAULT_WEBHOOK_ONLY),
+                    ): BooleanSelector(),
+                    vol.Required(
+                        CONF_MANUAL_SYNC,
+                        default=options.get(CONF_MANUAL_SYNC, DEFAULT_MANUAL_SYNC),
                     ): BooleanSelector(),
                 }
             ),

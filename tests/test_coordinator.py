@@ -12,6 +12,7 @@ from custom_components.ttlock_connect.api import RequestFailed, TTLockApi
 from custom_components.ttlock_connect.capture import LockTrafficCapture
 from custom_components.ttlock_connect.const import (
     CONF_GATEWAY_POLL_INTERVAL,
+    CONF_MANUAL_SYNC,
     CONF_POLL_INTERVAL,
     CONF_SLOW_POLL_INTERVAL,
     CONF_WEBHOOK_ONLY,
@@ -572,6 +573,55 @@ class TestLockUpdateCoordinator:
                 hass, api, options={CONF_GATEWAY_POLL_INTERVAL: 60}
             )
             assert coordinator.update_interval == timedelta(minutes=60)
+
+        async def test_manual_sync_disables_schedule(self, hass, api):
+            coordinator = self._make_coordinator(
+                hass, api, options={CONF_MANUAL_SYNC: True}
+            )
+            assert coordinator.update_interval is None
+
+    class TestManualSyncMode:
+        """CONF_MANUAL_SYNC disables the lock coordinator's schedule too -
+        refreshes then only happen on demand (Sync Now button, update_state
+        action, startup fill)."""
+
+        def _make_coordinator(self, hass, api, options=None):
+            config_entry = MockConfigEntry(domain=DOMAIN, options=options or {})
+            config_entry.add_to_hass(hass)
+            summary = LockSummary(
+                lockId=7252408,
+                lockAlias="Test Lock",
+                lockMac="00:00:00:00:00:00",
+                hasGateway=1,
+            )
+            return LockUpdateCoordinator(
+                hass,
+                config_entry,
+                api,
+                summary,
+                LockTrafficCapture(),
+                LockStateStore(hass),
+            )
+
+        async def test_manual_sync_disables_lock_schedule(self, hass, api):
+            coordinator = self._make_coordinator(
+                hass, api, options={CONF_MANUAL_SYNC: True}
+            )
+            assert coordinator.update_interval is None
+
+        async def test_manual_refresh_still_works(
+            self, hass, api, mock_api_responses, monkeypatch
+        ):
+            """No schedule, but an explicit refresh still hits the cloud."""
+            mock_api_responses("default")
+            coordinator = self._make_coordinator(
+                hass, api, options={CONF_MANUAL_SYNC: True}
+            )
+
+            await coordinator.async_refresh()
+
+            assert coordinator.last_update_success is True
+            assert coordinator.data.locked is not None
 
     class TestWebhookOnlyMode:
         """With webhook_only enabled AND the webhook confirmed live, polls

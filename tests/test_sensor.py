@@ -84,6 +84,22 @@ async def test_api_usage_sensors_created_and_counting(
     }
 
 
+async def test_api_estimate_sensor_matches_estimator(
+    hass, component_setup, mock_api_responses
+):
+    """The estimated-monthly sensor exposes the estimator's math for the entry."""
+    mock_api_responses("default")
+    await component_setup()
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    state = hass.states.get("sensor.ttlock_api_calls_estimated_monthly")
+    assert state is not None
+    assert int(state.state) > 0
+    breakdown = state.attributes["by_source"]
+    assert int(state.state) == sum(breakdown.values())
+    assert state.attributes["connectable_locks"] == 1
+
+
 async def test_gateway_signal_entity_disabled_by_default(
     hass, component_setup, mock_api_responses
 ):

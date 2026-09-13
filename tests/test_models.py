@@ -6,6 +6,8 @@ import pytest
 from custom_components.ttlock_connect.models import (
     Card,
     CardType,
+    Ekey,
+    EkeyStatus,
     EpochMs,
     Features,
     Fingerprint,
@@ -316,3 +318,36 @@ class TestLockSummary:
     def test_lock_data_is_none_when_absent(self):
         """Older accounts and trimmed fixtures omit it - that must not be fatal."""
         assert self._summary().lockData is None
+
+
+class TestEkey:
+    def test_parses_wire_format(self):
+        ekey = Ekey.model_validate(
+            {
+                "keyId": 3234293,
+                "lockId": 532323,
+                "username": "jack@google.com",
+                "keyName": "Ekey for Jack",
+                "keyStatus": "110405",
+                "startDate": 1528878944000,
+                "endDate": 1628878944000,
+                "keyRight": 1,
+                "remoteEnable": 1,
+                "senderUsername": "alexa@google.com",
+            }
+        )
+        assert ekey.id == 3234293
+        assert ekey.status is EkeyStatus.frozen
+        assert ekey.start_date is not None
+        assert bool(ekey.remote_enable) is True
+
+    def test_unrecognized_status_parses_as_unknown(self):
+        """New status codes from the cloud must not fail the whole model."""
+        ekey = Ekey.model_validate({"keyId": 1, "keyStatus": "999999"})
+        assert ekey.status is EkeyStatus.unknown
+
+    def test_zero_dates_mean_permanent(self):
+        ekey = Ekey.model_validate({"keyId": 1, "startDate": 0, "endDate": 0})
+        assert ekey.start_date is None
+        assert ekey.end_date is None
+        assert ekey.expired is False

@@ -47,6 +47,7 @@ from .const import DEFAULT_REGION, REGIONS, get_device_logger
 from .models import (
     AddPasscodeConfig,
     Card,
+    Ekey,
     Fingerprint,
     Gateway,
     GatewayLink,
@@ -513,6 +514,87 @@ class TTLockApi:
             return False
 
         return True
+
+    # Ekey (app-based key) management. These are pure cloud-account
+    # operations - nothing is relayed to the lock hardware, so they don't
+    # take GW_LOCK. Docs: docs/ttlock-cloud-api/ekey/. On any API error the
+    # underlying get/post raises RequestFailed, which surfaces to the
+    # service call that triggered it.
+
+    async def list_ekeys(self, lock_id: int) -> list[Ekey]:
+        """List all ekeys granted on a lock (excludes the top admin's own)."""
+        res = await self.get(
+            "lock/listKey",
+            lockId=lock_id,
+            pageNo=1,
+            pageSize=200,
+            orderBy=1,
+        )
+        return [Ekey.model_validate(ekey) for ekey in res["list"]]
+
+    async def send_ekey(
+        self,
+        lock_id: int,
+        receiver_username: str,
+        name: str,
+        start_ms: int = 0,
+        end_ms: int = 0,
+        remarks: str | None = None,
+        remote_enable: bool | None = None,
+        create_user: bool = False,
+    ) -> int | None:
+        """Send an ekey for a lock to another TTLock account.
+
+        startDate == endDate == 0 means a permanent key. With create_user,
+        an unregistered phone/email receiver gets an account auto-created
+        (default password: last six characters of the username). Sending to
+        a user who already holds an ekey for this lock replaces it.
+        """
+        params: dict[str, Any] = {
+            "lockId": lock_id,
+            "receiverUsername": receiver_username,
+            "keyName": name,
+            "startDate": start_ms,
+            "endDate": end_ms,
+        }
+        if remarks:
+            params["remarks"] = remarks
+        if remote_enable is not None:
+            params["remoteEnable"] = 1 if remote_enable else 2
+        if create_user:
+            params["createUser"] = 1
+
+        res = await self.post("key/send", **params)
+        return res.get("keyId")
+
+    async def delete_ekey(self, key_id: int) -> None:
+        """Revoke an ekey."""
+        await self.post("key/delete", keyId=key_id)
+
+    async def freeze_ekey(self, key_id: int) -> None:
+        """Temporarily disable an ekey without revoking it."""
+        await self.post("key/freeze", keyId=key_id)
+
+    async def unfreeze_ekey(self, key_id: int) -> None:
+        """Re-enable a frozen ekey."""
+        await self.post("key/unfreeze", keyId=key_id)
+
+    async def set_ekey_period(self, key_id: int, start_ms: int, end_ms: int) -> None:
+        """Change an ekey's validity period (0/0 = permanent)."""
+        await self.post(
+            "key/changePeriod", keyId=key_id, startDate=start_ms, endDate=end_ms
+        )
+
+    async def modify_ekey(
+        self, key_id: int, name: str | None = None, remote_enable: bool | None = None
+    ) -> None:
+        """Rename an ekey and/or toggle its remote-unlock right."""
+        params: dict[str, Any] = {"keyId": key_id}
+        if name is not None:
+            params["keyName"] = name
+        if remote_enable is not None:
+            params["remoteEnable"] = 1 if remote_enable else 2
+        await self.post("key/update", **params)
 
     async def set_auto_lock(self, lock_id: int, seconds: int) -> bool:
         """Set the AutoLock feature of the lock."""
