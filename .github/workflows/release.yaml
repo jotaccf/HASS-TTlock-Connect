@@ -14,13 +14,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Get version
-        id: version
-        uses: home-assistant/actions/helpers/version@master
-
       - name: Patch manifest and zip
         run: |
-          sed -i 's/v0.0.0/${{ steps.version.outputs.version }}/' custom_components/ttlock_connect/manifest.json
+          # HA rejects manifest versions with a leading "v"; strip it from the tag.
+          version="${GITHUB_REF_NAME#v}"
+          sed -i "s/v0.0.0/${version}/" custom_components/ttlock_connect/manifest.json
           cd custom_components/ttlock_connect/
           zip ../../ttlock_connect.zip -r ./
 
