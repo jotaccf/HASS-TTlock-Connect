@@ -15,6 +15,8 @@ This integration uses the TTLock Cloud to communicate with your locks. It suppor
 - Sensors for battery, last operator and last trigger reason
 - Passcode (PIN) management: create, modify, delete, list and clean up expired codes
 - **eKey management**: send app-based keys to other TTLock accounts, list them, freeze/unfreeze, change validity periods, rename and revoke — all from Home Assistant actions
+- **Built-in management panel**: a TTLock-app-like UI under the integration's *Configure* button — pick a lock, see its PINs and eKeys, add/delete PINs, send/revoke/freeze eKeys, no YAML needed
+- **Per-lock credential sensors**: each lock gets `<Lock name> PIN Codes` and `<Lock name> eKeys` sensors with the full lists in their attributes, always visible on the dashboard
 - IC card and fingerprint management (list, rename, delete)
 - Passage mode and auto-lock configuration
 - Door sensor support (open/closed state and sensor battery)
@@ -49,6 +51,13 @@ This integration uses the TTLock Cloud to communicate with your locks. It suppor
    - Test by unlocking your door
    - When the event data is received by Home Assistant the repair notice resolves itself, confirming everything works.
 
+## Managing PIN codes and eKeys
+
+Two ways, both mirroring what the TTLock phone app offers:
+
+- **Management panel** — Settings > Devices & Services > HASS TTLock Connect > **Configure** > *Manage PIN codes & eKeys*. Pick a lock and you get its current PINs and eKeys plus actions to add/delete a PIN and send/revoke/freeze/unfreeze an eKey, all through native forms. Leave both dates empty for a permanent credential.
+- **Per-lock sensors** — every lock has `sensor.<lock_name>_pin_codes` (state = valid PINs; the full list with codes and validity in the `pin_codes` attribute) and `sensor.<lock_name>_ekeys` (state = usable keys; details in the `ekeys` attribute). They refresh on the detail poll cycle and immediately after any PIN/eKey action, so a dashboard card always shows the current lists. For automations, the equivalent `ttlock_connect.*` actions (create_passcode, send_ekey, …) remain available.
+
 ## Managing API usage
 
 TTLock's developer plans have a monthly API-call budget, and multi-lock accounts can exceed it. The integration gives you visibility and control:
@@ -56,7 +65,7 @@ TTLock's developer plans have a monthly API-call budget, and multi-lock accounts
 - **Usage sensors** — a "TTLock Cloud API" device provides `TTLock API Calls Today` and `TTLock API Calls This Month` sensors. The monthly sensor includes a `projected_month_total` attribute (this month's total at the current rate) and both carry a per-endpoint breakdown, so you can see exactly what is spending your quota.
 - **Tunable polling** — under Settings > Devices & Services > HASS TTLock Connect > Configure you can adjust:
   - *Poll interval*: how often each lock's state is re-verified (default 30 min).
-  - *Detail refresh interval*: how often slow-changing detail is re-fetched (default 6 h).
+  - *Detail refresh interval*: how often slow-changing detail — battery, config, gateway link, PIN/eKey lists — is re-fetched (default 6 h).
   - *Gateway status interval*: how often gateway online/offline status is checked (default 15 min). This is one call per check regardless of lock count — raising it to 60 min saves ~2200 calls/month on its own.
   - *Webhook-only state updates*: once your webhook is confirmed working, skip the per-poll cloud state check entirely and rely on webhooks (and Bluetooth, when in range). Saves one call per lock per poll; only the initial state after a restart comes from the cloud.
   - *Manual sync only*: disable every scheduled poll. Data is fetched only at startup, when you press the **TTLock Sync Now** button (on the TTLock Cloud API device), a per-lock **Sync** button, or via the `update_state` action. Webhooks and Bluetooth still deliver real-time state.

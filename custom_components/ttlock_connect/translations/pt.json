@@ -27,8 +27,24 @@
     }
   },
   "options": {
+    "abort": {
+      "not_loaded": "A integração ainda não terminou de carregar — tente novamente daqui a instantes.",
+      "no_locks": "Não foram encontradas fechaduras com ligação nesta conta."
+    },
+    "error": {
+      "invalid_passcode": "O PIN tem de ter 4 a 9 dígitos.",
+      "period_incomplete": "Indique a data de início e a de fim, ou nenhuma (para uma credencial permanente).",
+      "api_error": "A cloud TTLock rejeitou o pedido — verifique os dados e tente novamente."
+    },
     "step": {
       "init": {
+        "title": "HASS TTLock Connect",
+        "menu_options": {
+          "cadence": "Frequência de polling e uso da API",
+          "codes": "Gerir códigos PIN e eKeys"
+        }
+      },
+      "cadence": {
         "title": "Frequência de polling",
         "description": "Com que frequência a integração consulta a cloud TTLock. As fechaduras também são actualizadas em tempo quase real via webhooks, por isso estes valores podem ficar altos para manter contas com várias fechaduras dentro do limite mensal de chamadas à API da TTLock. Reduza o intervalo de polling se os seus webhooks forem pouco fiáveis.\n\n**Com as definições actualmente guardadas e as suas {locks} fechadura(s) com ligação, o polling agendado faz cerca de {estimate} chamadas à API por mês.** Depois de guardar, reabra este formulário (ou consulte o sensor 'TTLock API Calls Estimated Monthly') para ver o número recalculado.",
         "data": {
@@ -40,10 +56,77 @@
         },
         "data_description": {
           "poll_interval": "Com que frequência re-verificar se cada fechadura está trancada ou destrancada, em minutos.",
-          "slow_poll_interval": "Com que frequência actualizar detalhes que mudam pouco (bateria, nome, configuração de autolock e modo de passagem, sinal do gateway), em horas.",
+          "slow_poll_interval": "Com que frequência actualizar detalhes que mudam pouco (bateria, nome, configuração de autolock e modo de passagem, sinal do gateway, códigos PIN e eKeys), em horas.",
           "gateway_poll_interval": "Com que frequência verificar se os gateways estão online, em minutos. Uma chamada à API por verificação, independentemente do número de fechaduras.",
           "webhook_only": "Depois de os webhooks estarem confirmados como funcionais, deixa de re-verificar o estado das fechaduras na cloud em cada poll e passa a confiar nos webhooks (e no Bluetooth, se ao alcance). Poupa uma chamada à API por fechadura por poll; apenas o estado inicial após um reinício é obtido da cloud.",
-          "manual_sync": "Desactiva TODO o polling agendado. Os dados só são obtidos no arranque, quando carrega no botão 'TTLock Sync Now' ou através da acção update_state. Os webhooks e o Bluetooth continuam a actualizar o estado em tempo real. Sobrepõe-se aos intervalos acima."
+          "manual_sync": "Desactiva TODO o polling agendado. Os dados só são obtidos no arranque, quando carrega num botão de sincronização ou através da acção update_state. Os webhooks e o Bluetooth continuam a actualizar o estado em tempo real. Sobrepõe-se aos intervalos acima."
+        }
+      },
+      "codes": {
+        "title": "Gerir códigos PIN e eKeys",
+        "description": "Escolha a fechadura a gerir.",
+        "data": {
+          "lock": "Fechadura"
+        }
+      },
+      "lock_menu": {
+        "title": "{lock}",
+        "description": "**Códigos PIN**\n{pins}\n\n**eKeys**\n{ekeys}",
+        "menu_options": {
+          "add_pin": "Adicionar código PIN",
+          "delete_pin": "Apagar código PIN",
+          "send_ekey": "Enviar eKey",
+          "delete_ekey": "Revogar eKey",
+          "freeze_ekey": "Congelar eKey",
+          "unfreeze_ekey": "Descongelar eKey",
+          "finish": "Concluído"
+        }
+      },
+      "add_pin": {
+        "title": "Adicionar código PIN — {lock}",
+        "description": "Deixe as duas datas vazias para um PIN permanente.",
+        "data": {
+          "passcode_name": "Nome",
+          "passcode": "Código PIN (4–9 dígitos)",
+          "start_time": "Válido desde",
+          "end_time": "Válido até"
+        }
+      },
+      "delete_pin": {
+        "title": "Apagar código PIN — {lock}",
+        "data": {
+          "passcode": "Código PIN"
+        }
+      },
+      "send_ekey": {
+        "title": "Enviar eKey — {lock}",
+        "description": "O destinatário recebe a chave na app TTLock dele. Deixe as duas datas vazias para uma chave permanente.",
+        "data": {
+          "receiver_username": "Destinatário (telefone ou email)",
+          "name": "Nome da eKey",
+          "start_time": "Válida desde",
+          "end_time": "Válida até",
+          "remote_enable": "Permitir abertura remota",
+          "create_user": "Criar conta TTLock se não existir"
+        }
+      },
+      "delete_ekey": {
+        "title": "Revogar eKey — {lock}",
+        "data": {
+          "ekey": "eKey"
+        }
+      },
+      "freeze_ekey": {
+        "title": "Congelar eKey — {lock}",
+        "description": "A chave deixa de funcionar até ser descongelada.",
+        "data": {
+          "ekey": "eKey"
+        }
+      },
+      "unfreeze_ekey": {
+        "title": "Descongelar eKey — {lock}",
+        "data": {
+          "ekey": "eKey"
         }
       }
     }

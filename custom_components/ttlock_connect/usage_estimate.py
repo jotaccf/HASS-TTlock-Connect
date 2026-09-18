@@ -50,6 +50,7 @@ def estimate_monthly_calls(
         return {
             "lock_state": 0,
             "lock_detail": 0,
+            "credentials": 0,
             "gateway_status": 0,
             "door_sensor": 0,
             "total": 0,
@@ -77,6 +78,10 @@ def estimate_monthly_calls(
     # gateway/listByLock for locks reached via a gateway.
     lock_detail = (connectable_locks * 2 + locks_with_gateway) * slow_fetches_per_month
 
+    # Slow tier: lock/listKeyboardPwd + lock/listKey per lock, feeding the
+    # per-lock PIN-code and eKey sensors.
+    credentials = connectable_locks * 2 * slow_fetches_per_month
+
     # gateway/list: one account-wide call per cycle.
     gateway_status = (24 * 60 / gateway_minutes) * DAYS_PER_MONTH
 
@@ -86,6 +91,7 @@ def estimate_monthly_calls(
     breakdown = {
         "lock_state": round(lock_state),
         "lock_detail": round(lock_detail),
+        "credentials": round(credentials),
         "gateway_status": round(gateway_status),
         "door_sensor": round(door_sensor),
     }

@@ -491,6 +491,7 @@ class Services:
 
         for coordinator in self._get_coordinators(call).values():
             await coordinator.api.add_passcode(coordinator.lock_id, config)
+            await coordinator.async_refresh_codes()
 
     async def handle_modify_passcode(self, call: ServiceCall):
         """Modify an existing passcode for the given entities."""
@@ -522,6 +523,7 @@ class Services:
             await coordinator.api.modify_passcode(
                 coordinator.lock_id, passcode_id, config
             )
+            await coordinator.async_refresh_codes()
 
     async def handle_delete_passcode(self, call: ServiceCall):
         """Delete a specific passcode from the given entities."""
@@ -530,6 +532,7 @@ class Services:
 
         for coordinator in self._get_coordinators(call).values():
             await coordinator.api.delete_passcode(coordinator.lock_id, passcode_id)
+            await coordinator.async_refresh_codes()
 
     async def handle_cleanup_passcodes(self, call: ServiceCall) -> ServiceResponse:
         """Clean up expired passcodes for the given entities."""
@@ -546,6 +549,7 @@ class Services:
                         removed_for_lock.append(code.name)
             if removed_for_lock:
                 removed[entity_id] = removed_for_lock
+                await coordinator.async_refresh_codes()
 
         return {"removed": removed}  # ty: ignore[invalid-return-type] - dict/list generics are invariant, so dict[str, list[str | None]] isn't recognized as a dict[str, JsonValueType] subtype even though every value is one
 
@@ -747,6 +751,7 @@ class Services:
                 remote_enable=call.data.get("remote_enable"),
                 create_user=call.data.get("create_user", False),
             )
+            await coordinator.async_refresh_codes()
 
         return {"key_ids": sent} if call.return_response else None  # ty: ignore[invalid-return-type] - dict/list generics are invariant, so this structurally-JSON-safe dict isn't recognized as a dict[str, JsonValueType] subtype
 
@@ -755,18 +760,21 @@ class Services:
         key_id = call.data["key_id"]
         for coordinator in self._first_coordinator(call):
             await coordinator.api.delete_ekey(key_id)
+            await coordinator.async_refresh_codes()
 
     async def handle_freeze_ekey(self, call: ServiceCall):
         """Temporarily disable an ekey."""
         key_id = call.data["key_id"]
         for coordinator in self._first_coordinator(call):
             await coordinator.api.freeze_ekey(key_id)
+            await coordinator.async_refresh_codes()
 
     async def handle_unfreeze_ekey(self, call: ServiceCall):
         """Re-enable a frozen ekey."""
         key_id = call.data["key_id"]
         for coordinator in self._first_coordinator(call):
             await coordinator.api.unfreeze_ekey(key_id)
+            await coordinator.async_refresh_codes()
 
     async def handle_set_ekey_period(self, call: ServiceCall):
         """Change an ekey's validity period (omit both times for permanent)."""
@@ -774,6 +782,7 @@ class Services:
         start_ms, end_ms = self._period_ms(call)
         for coordinator in self._first_coordinator(call):
             await coordinator.api.set_ekey_period(key_id, start_ms, end_ms)
+            await coordinator.async_refresh_codes()
 
     async def handle_modify_ekey(self, call: ServiceCall):
         """Rename an ekey and/or toggle its remote-unlock right."""
@@ -784,6 +793,7 @@ class Services:
                 name=call.data.get("name"),
                 remote_enable=call.data.get("remote_enable"),
             )
+            await coordinator.async_refresh_codes()
 
     def _first_coordinator(self, call: ServiceCall) -> list[LockUpdateCoordinator]:
         """The first selected lock's coordinator, as a 0-or-1 element list.

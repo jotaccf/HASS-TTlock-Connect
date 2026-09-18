@@ -82,6 +82,10 @@ TO_REDACT = {
     "lockData",
     "webhook_id",
     "webhook_url",
+    # Credential-sensor attributes (sensor.py): PIN values and eKey receiver
+    # accounts must not land in diagnostics dumps.
+    "pin_codes",
+    "ekeys",
 }
 
 

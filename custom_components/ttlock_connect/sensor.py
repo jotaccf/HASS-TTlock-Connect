@@ -33,7 +33,7 @@ from .coordinator import (
     lock_coordinators,
 )
 from .entity import BaseLockEntity
-from .models import Features
+from .models import EkeyStatus, Features
 from .usage_estimate import estimate_monthly_calls
 
 _LOGGER = logging.getLogger(__name__)
@@ -61,6 +61,8 @@ async def async_setup_entry(
                     LockBattery(coordinator),
                     LockOperator(coordinator),
                     LockTrigger(coordinator),
+                    LockPinCodes(coordinator),
+                    LockEkeys(coordinator),
                     *([LockGateway(coordinator)] if coordinator.has_gateway else []),
                     *([LockBleSignal(coordinator)] if with_bluetooth else []),
                 )
@@ -150,6 +152,89 @@ class SensorBattery(BaseLockEntity, SensorEntity):
             if self.coordinator.data.sensor
             else None
         )
+
+
+class LockPinCodes(BaseLockEntity, SensorEntity):
+    """The lock's PIN codes, mirroring the TTLock app's passcode list.
+
+    State is the number of currently valid (non-expired) codes; the full
+    list - names, codes and validity windows - is in the attributes, so a
+    markdown or entities card can show it like the app does. Refreshed on
+    the slow poll tier and immediately after any passcode action.
+    """
+
+    _attr_icon = "mdi:dialpad"
+
+    def _update_from_coordinator(self) -> None:
+        """Count the valid codes and expose the full list as attributes."""
+        self._attr_name = f"{self.coordinator.data.name} PIN Codes"
+        passcodes = self.coordinator.data.passcodes
+        if passcodes is None:
+            self._attr_native_value = None
+            self._attr_extra_state_attributes = {}
+            return
+        self._attr_native_value = sum(1 for code in passcodes if not code.expired)
+        self._attr_extra_state_attributes = {
+            "total": len(passcodes),
+            "pin_codes": [
+                {
+                    "id": code.id,
+                    "name": code.name,
+                    "passcode": code.passcode,
+                    "type": code.type.name if code.type is not None else None,
+                    "start_date": code.start_date.isoformat()
+                    if code.start_date
+                    else None,
+                    "end_date": code.end_date.isoformat() if code.end_date else None,
+                    "expired": code.expired,
+                }
+                for code in passcodes
+            ],
+        }
+
+
+class LockEkeys(BaseLockEntity, SensorEntity):
+    """The lock's eKeys, mirroring the TTLock app's eKey list.
+
+    State is the number of usable (non-expired, non-frozen) keys; the full
+    list - receiver, status, validity, remote-unlock right - is in the
+    attributes. Refreshed on the slow poll tier and immediately after any
+    eKey action.
+    """
+
+    _attr_icon = "mdi:key-wireless"
+
+    def _update_from_coordinator(self) -> None:
+        """Count the usable keys and expose the full list as attributes."""
+        self._attr_name = f"{self.coordinator.data.name} eKeys"
+        ekeys = self.coordinator.data.ekeys
+        if ekeys is None:
+            self._attr_native_value = None
+            self._attr_extra_state_attributes = {}
+            return
+        self._attr_native_value = sum(
+            1
+            for ekey in ekeys
+            if not ekey.expired and ekey.status is not EkeyStatus.frozen
+        )
+        self._attr_extra_state_attributes = {
+            "total": len(ekeys),
+            "ekeys": [
+                {
+                    "id": ekey.id,
+                    "name": ekey.name,
+                    "username": ekey.username,
+                    "status": ekey.status.name,
+                    "start_date": ekey.start_date.isoformat()
+                    if ekey.start_date
+                    else None,
+                    "end_date": ekey.end_date.isoformat() if ekey.end_date else None,
+                    "expired": ekey.expired,
+                    "remote_enable": bool(ekey.remote_enable),
+                }
+                for ekey in ekeys
+            ],
+        }
 
 
 class LockGateway(BaseLockEntity, SensorEntity):

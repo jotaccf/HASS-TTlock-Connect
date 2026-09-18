@@ -31,8 +31,24 @@
     }
   },
   "options": {
+    "abort": {
+      "not_loaded": "The integration hasn't finished loading yet — try again in a moment.",
+      "no_locks": "No connectable locks found on this account."
+    },
+    "error": {
+      "invalid_passcode": "The PIN must be 4 to 9 digits.",
+      "period_incomplete": "Provide both a start and an end time, or neither (for a permanent credential).",
+      "api_error": "The TTLock cloud rejected the request — check the details and try again."
+    },
     "step": {
       "init": {
+        "title": "HASS TTLock Connect",
+        "menu_options": {
+          "cadence": "Polling cadence & API usage",
+          "codes": "Manage PIN codes & eKeys"
+        }
+      },
+      "cadence": {
         "title": "Polling cadence",
         "description": "How often the integration polls the TTLock cloud. Locks also update in near real time via webhooks, so these can stay high to keep multi-lock accounts under TTLock's free-tier API-call limit. Lower the poll interval if your webhooks are unreliable.\n\n**With the currently saved settings and your {locks} connectable lock(s), scheduled polling makes about {estimate} API calls per month.** After saving, reopen this form (or check the 'TTLock API Calls Estimated Monthly' sensor) to see the recalculated number.",
         "data": {
@@ -44,10 +60,77 @@
         },
         "data_description": {
           "poll_interval": "How often to re-check whether each lock is locked or unlocked, in minutes.",
-          "slow_poll_interval": "How often to refresh slow-changing detail (battery, name, autolock and passage-mode config, gateway signal), in hours.",
+          "slow_poll_interval": "How often to refresh slow-changing detail (battery, name, autolock and passage-mode config, gateway signal, PIN codes and eKeys), in hours.",
           "gateway_poll_interval": "How often to check whether gateways are online, in minutes. One API call per check, regardless of how many locks you have.",
           "webhook_only": "Once webhooks are confirmed working, stop re-checking lock state against the cloud on every poll and rely on webhooks (and Bluetooth, if in range) instead. Saves one API call per lock per poll; only the initial state after a restart is fetched from the cloud.",
-          "manual_sync": "Disable ALL scheduled polling. Data is fetched only at startup, when you press the 'TTLock Sync Now' button, or via the update_state action. Webhooks and Bluetooth still update lock state in real time. Overrides the intervals above."
+          "manual_sync": "Disable ALL scheduled polling. Data is fetched only at startup, when you press a sync button, or via the update_state action. Webhooks and Bluetooth still update lock state in real time. Overrides the intervals above."
+        }
+      },
+      "codes": {
+        "title": "Manage PIN codes & eKeys",
+        "description": "Pick the lock to manage.",
+        "data": {
+          "lock": "Lock"
+        }
+      },
+      "lock_menu": {
+        "title": "{lock}",
+        "description": "**PIN codes**\n{pins}\n\n**eKeys**\n{ekeys}",
+        "menu_options": {
+          "add_pin": "Add a PIN code",
+          "delete_pin": "Delete a PIN code",
+          "send_ekey": "Send an eKey",
+          "delete_ekey": "Revoke an eKey",
+          "freeze_ekey": "Freeze an eKey",
+          "unfreeze_ekey": "Unfreeze an eKey",
+          "finish": "Done"
+        }
+      },
+      "add_pin": {
+        "title": "Add a PIN code — {lock}",
+        "description": "Leave both dates empty for a permanent PIN.",
+        "data": {
+          "passcode_name": "Name",
+          "passcode": "PIN code (4–9 digits)",
+          "start_time": "Valid from",
+          "end_time": "Valid until"
+        }
+      },
+      "delete_pin": {
+        "title": "Delete a PIN code — {lock}",
+        "data": {
+          "passcode": "PIN code"
+        }
+      },
+      "send_ekey": {
+        "title": "Send an eKey — {lock}",
+        "description": "The receiver gets the key in their TTLock app. Leave both dates empty for a permanent key.",
+        "data": {
+          "receiver_username": "Receiver (phone number or email)",
+          "name": "eKey name",
+          "start_time": "Valid from",
+          "end_time": "Valid until",
+          "remote_enable": "Allow remote unlock",
+          "create_user": "Create TTLock account if missing"
+        }
+      },
+      "delete_ekey": {
+        "title": "Revoke an eKey — {lock}",
+        "data": {
+          "ekey": "eKey"
+        }
+      },
+      "freeze_ekey": {
+        "title": "Freeze an eKey — {lock}",
+        "description": "The key stops working until unfrozen.",
+        "data": {
+          "ekey": "eKey"
+        }
+      },
+      "unfreeze_ekey": {
+        "title": "Unfreeze an eKey — {lock}",
+        "data": {
+          "ekey": "eKey"
         }
       }
     }

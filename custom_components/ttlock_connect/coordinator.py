@@ -59,11 +59,13 @@ from .const import (
     TT_LOCKS,
 )
 from .models import (
+    Ekey,
     Features,
     Gateway,
     GatewayLink,
     LockSummary,
     PassageModeConfig,
+    Passcode,
     Sensor,
     SensorState,
     State,
@@ -119,6 +121,10 @@ class LockState:
     auto_lock_seconds: int | None = None
     passage_mode_config: PassageModeConfig | None = None
     gateways: list[GatewayLink] = field(default_factory=list)
+    # PIN codes and eKeys granted on the lock, for the per-lock credential
+    # sensors and the options-flow management panel. None = not fetched yet.
+    passcodes: list[Passcode] | None = None
+    ekeys: list[Ekey] | None = None
 
     @property
     def best_gateway(self) -> GatewayLink | None:
@@ -284,6 +290,7 @@ class LockUpdateCoordinator(DataUpdateCoordinator[LockState]):
         self._details_last_fetched: datetime | None = None
         self._passage_last_fetched: datetime | None = None
         self._gateways_last_fetched: datetime | None = None
+        self._codes_last_fetched: datetime | None = None
 
         super().__init__(
             hass,
@@ -454,10 +461,34 @@ class LockUpdateCoordinator(DataUpdateCoordinator[LockState]):
                     self._gateways_last_fetched = now
             else:
                 new_data.gateways = []
+
+            # Slow tier: PIN codes and eKeys, for the per-lock credential
+            # sensors. Management actions (services.py, the options panel)
+            # re-fetch immediately via async_refresh_codes, so between slow
+            # cycles the lists only go stale if changed from outside HA
+            # (e.g. the TTLock app).
+            if self._slow_tier_due(self._codes_last_fetched, now):
+                new_data.passcodes = await self.api.list_passcodes(self.lock_id)
+                new_data.ekeys = await self.api.list_ekeys(self.lock_id)
+                self._codes_last_fetched = now
         except Exception as err:
             raise UpdateFailed(err) from err
         else:
             return new_data
+
+    async def async_refresh_codes(self) -> None:
+        """Re-fetch this lock's PIN codes and eKeys now.
+
+        Called right after any management action (create/delete a PIN, send/
+        revoke an eKey - from services.py or the options-flow panel) so the
+        credential sensors reflect the change immediately instead of waiting
+        for the next slow-tier cycle.
+        """
+        new_data = deepcopy(self.data)
+        new_data.passcodes = await self.api.list_passcodes(self.lock_id)
+        new_data.ekeys = await self.api.list_ekeys(self.lock_id)
+        self._codes_last_fetched = dt_util.now()
+        self.async_set_updated_data(new_data)
 
     def _webhook_only_active(self) -> bool:
         """Whether webhook-only mode may actually skip cloud state checks.
@@ -685,13 +716,22 @@ class LockUpdateCoordinator(DataUpdateCoordinator[LockState]):
 
     def as_dict(self) -> dict:
         """Serialize for diagnostics."""
+        # PIN values and eKey receivers must not land in a diagnostics dump
+        # users attach to public bug reports - export counts only.
+        device = deepcopy(self.data)
+        device.passcodes = None
+        device.ekeys = None
         return {
             "unique_id": self.unique_id,
             "connectable": self.connectable,
             "has_gateway": self.has_gateway,
             "feature_value": self.feature_value,
             "last_update_success": self.last_update_success,
-            "device": self.data,
+            "credential_counts": {
+                "passcodes": len(self.data.passcodes or []),
+                "ekeys": len(self.data.ekeys or []),
+            },
+            "device": device,
             "entities": [
                 state.as_dict()
                 for entity in self.entities

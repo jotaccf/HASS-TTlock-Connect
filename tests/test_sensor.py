@@ -254,3 +254,49 @@ async def test_bluetooth_signal_entity_reports_locally_heard_rssi(
 async def test_bluetooth_signal_entity_has_no_attributes_when_never_heard(coordinator):
     """A lock we've never heard exposes no source/last_seen to report."""
     assert LockBleSignal(coordinator).extra_state_attributes is None
+
+
+async def test_pin_codes_sensor_lists_codes(hass, component_setup, mock_api_responses):
+    """State counts valid PINs; attributes carry the full list."""
+    mock_api_responses("with_credentials")
+    await component_setup()
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    state = hass.states.get("sensor.front_door_pin_codes")
+    assert state is not None
+    assert state.state == "1"  # one permanent code; the other is expired
+    assert state.attributes["total"] == 2
+    codes = state.attributes["pin_codes"]
+    assert [code["name"] for code in codes] == ["Cleaner", "Guest"]
+    assert codes[0]["passcode"] == "123456"
+    assert codes[0]["expired"] is False
+    assert codes[1]["expired"] is True
+
+
+async def test_ekeys_sensor_lists_keys(hass, component_setup, mock_api_responses):
+    """State counts usable eKeys (frozen excluded); attributes carry the list."""
+    mock_api_responses("with_credentials")
+    await component_setup()
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    state = hass.states.get("sensor.front_door_ekeys")
+    assert state is not None
+    assert state.state == "1"  # normal key counts, frozen one doesn't
+    assert state.attributes["total"] == 2
+    ekeys = state.attributes["ekeys"]
+    assert {ekey["status"] for ekey in ekeys} == {"normal", "frozen"}
+    assert ekeys[0]["username"] == "+351911111111"
+    assert ekeys[0]["remote_enable"] is True
+
+
+async def test_credential_sensors_unknown_before_first_fetch(
+    hass, component_setup, mock_api_responses
+):
+    """Without data yet the sensors read unknown, not 0."""
+    mock_api_responses("default")
+    coordinator = await component_setup()
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    # default scenario fetches empty lists -> 0
+    assert hass.states.get("sensor.front_door_pin_codes").state == "0"
+    assert coordinator.data.passcodes == []

@@ -28,11 +28,13 @@ from custom_components.ttlock_connect.capture import LockTrafficCapture
 from custom_components.ttlock_connect.const import DOMAIN, TT_LOCKS
 from custom_components.ttlock_connect.coordinator import LockUpdateCoordinator
 from custom_components.ttlock_connect.models import (
+    Ekey,
     Lock,
     LockRecord,
     LockState,
     LockSummary,
     PassageModeConfig,
+    Passcode,
     Sensor,
 )
 from custom_components.ttlock_connect.store import LockStateStore
@@ -189,6 +191,8 @@ class MockApiData(NamedTuple):
     sensor: Sensor | None = None
     passage_mode: PassageModeConfig | None = None
     records: tuple[LockRecord, ...] = ()
+    passcodes: tuple[Passcode, ...] = ()
+    ekeys: tuple[Ekey, ...] = ()
 
 
 @pytest.fixture
@@ -224,6 +228,61 @@ def mock_data_factory():
                 lock=Lock.model_validate(BASIC_LOCK_DETAILS),
                 state=LockState.model_validate(LOCK_STATE_UNLOCKED),
                 passage_mode=None,
+            ),
+            "with_credentials": MockApiData(
+                lock=Lock.model_validate(BASIC_LOCK_DETAILS),
+                state=LockState.model_validate(LOCK_STATE_UNLOCKED),
+                passage_mode=PassageModeConfig.model_validate(
+                    PASSAGE_MODE_6_TO_6_7_DAYS
+                ),
+                passcodes=(
+                    Passcode.model_validate(
+                        {
+                            "keyboardPwdId": 111,
+                            "keyboardPwd": "123456",
+                            "keyboardPwdName": "Cleaner",
+                            "keyboardPwdType": 2,
+                        }
+                    ),
+                    Passcode.model_validate(
+                        {
+                            "keyboardPwdId": 222,
+                            "keyboardPwd": "987654",
+                            "keyboardPwdName": "Guest",
+                            "keyboardPwdType": 3,
+                            "startDate": 1600000000000,
+                            "endDate": 1600100000000,  # long past - expired
+                        }
+                    ),
+                ),
+                ekeys=(
+                    Ekey.model_validate(
+                        {
+                            "keyId": 501,
+                            "lockId": 7252408,
+                            "keyName": "Family",
+                            "username": "+351911111111",
+                            "senderUsername": "owner@example.com",
+                            "keyStatus": "110401",
+                            "startDate": 0,
+                            "endDate": 0,
+                            "remoteEnable": 1,
+                        }
+                    ),
+                    Ekey.model_validate(
+                        {
+                            "keyId": 502,
+                            "lockId": 7252408,
+                            "keyName": "Frozen guy",
+                            "username": "+351922222222",
+                            "senderUsername": "owner@example.com",
+                            "keyStatus": "110405",
+                            "startDate": 0,
+                            "endDate": 0,
+                            "remoteEnable": 2,
+                        }
+                    ),
+                ),
             ),
         }
         return scenarios[scenario]
@@ -272,6 +331,12 @@ def mock_api_responses(monkeypatch, mock_data_factory):
         async def mock_get_gateways_for_lock(*args, **kwargs):
             return []
 
+        async def mock_list_passcodes(*args, **kwargs):
+            return list(mock_data.passcodes)
+
+        async def mock_list_ekeys(*args, **kwargs):
+            return list(mock_data.ekeys)
+
         monkeypatch.setattr(
             "custom_components.ttlock_connect.api.TTLockApi.get_locks", mock_get_locks
         )
@@ -300,6 +365,14 @@ def mock_api_responses(monkeypatch, mock_data_factory):
         monkeypatch.setattr(
             "custom_components.ttlock_connect.api.TTLockApi.get_gateways_for_lock",
             mock_get_gateways_for_lock,
+        )
+        monkeypatch.setattr(
+            "custom_components.ttlock_connect.api.TTLockApi.list_passcodes",
+            mock_list_passcodes,
+        )
+        monkeypatch.setattr(
+            "custom_components.ttlock_connect.api.TTLockApi.list_ekeys",
+            mock_list_ekeys,
         )
 
     return create_mock_responses

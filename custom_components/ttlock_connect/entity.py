@@ -47,7 +47,12 @@ class BaseLockEntity(CoordinatorEntity[LockUpdateCoordinator], ABC):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
-        """Explain why the entity is unavailable, if it is non-connectable."""
-        if self.coordinator.connectable:
-            return None
-        return {"unavailable_reason": NOT_CONNECTABLE_REASON}
+        """Explain unavailability, or pass through what the subclass set.
+
+        Falling back to _attr_extra_state_attributes matters: this property
+        would otherwise shadow attributes subclasses assign in
+        _update_from_coordinator (e.g. the credential sensors' lists).
+        """
+        if not self.coordinator.connectable:
+            return {"unavailable_reason": NOT_CONNECTABLE_REASON}
+        return getattr(self, "_attr_extra_state_attributes", None)

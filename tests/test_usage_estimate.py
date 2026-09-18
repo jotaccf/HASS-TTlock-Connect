@@ -21,11 +21,13 @@ def test_defaults_single_lock_with_gateway():
 
     assert estimate["lock_state"] == round(48 * DAYS_PER_MONTH)
     assert estimate["lock_detail"] == round(3 * 4 * DAYS_PER_MONTH)
+    assert estimate["credentials"] == round(2 * 4 * DAYS_PER_MONTH)
     assert estimate["gateway_status"] == round(96 * DAYS_PER_MONTH)
     assert estimate["door_sensor"] == 0
     assert estimate["total"] == (
         estimate["lock_state"]
         + estimate["lock_detail"]
+        + estimate["credentials"]
         + estimate["gateway_status"]
         + estimate["door_sensor"]
     )
